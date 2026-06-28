@@ -1,0 +1,22 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "regions": ["cdg1"],
+  "crons": [
+    {
+      "path": "/api/cron/reindex",
+      "schedule": "0 4 * * 0"
+    }
+  ],
+  "functions": {
+    "src/app/api/chat/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/index/sync/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/cron/reindex/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}
