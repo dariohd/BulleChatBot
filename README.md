@@ -1,8 +1,21 @@
 # Bulle
 
-Assistant IA autonome et embarquable pour vos sites web.
+Assistant IA embarquable pour sites web — widget JS + API Next.js.
 
-Bulle tourne sur le **port 3001** pour ne pas entrer en conflit avec d'autres projets locaux (ex. bulletonsite sur 3000).
+| | |
+|---|---|
+| **URL production** | https://bulle-chatbot.vercel.app |
+| **Dépôt GitHub** | [github.com/dariohd/BulleChatBot](https://github.com/dariohd/BulleChatBot) |
+| **Notes techniques** | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+
+Bulle tourne sur le **port 3001** en local pour éviter le conflit avec bulletonsite (3000).
+
+## Stack
+
+- **Next.js 15** (App Router) + TypeScript
+- **Vercel AI SDK** — Ollama, Mistral, Anthropic, Google, AI Gateway
+- Widget embarquable (`public/widget/bulle.js`)
+- Tailwind CSS 4
 
 ## Démarrage rapide
 
@@ -12,39 +25,33 @@ cp .env.example .env
 npm run dev
 ```
 
-Ouvrir **http://localhost:3001** pour tester Bulle seul, sans greffer sur un autre site.
+→ http://localhost:3001
 
-## Dev vs Production
+## Dev vs production
 
 | Environnement | Provider | Pourquoi |
 |---|---|---|
-| **Local** (`npm run dev`) | `ollama` | Gratuit, tourne sur ta machine |
-| **Vercel** (prod) | `gateway` | Ollama n'est pas accessible depuis le cloud |
+| **Local** (`npm run dev`) | `ollama` | Gratuit, sur la machine |
+| **Vercel** (prod) | `gateway` | Ollama inaccessible depuis le cloud |
 
-### Comment ça marche quand Bulle est greffé sur d'autres sites
-
-Le widget sur bulletonsite (ou n'importe quel site) **n'exécute pas l'IA**. Il envoie les messages à ton serveur Bulle (sur Vercel). C'est **Vercel** qui appelle le modèle.
+Le widget sur un site client **n'exécute pas l'IA**. Il envoie les messages à l'API Bulle (Vercel), qui appelle le modèle :
 
 ```
-Visiteur sur bulletonsite.fr
-    → widget Bulle (JS)
-    → API Bulle sur Vercel (bulle.vercel.app/api/chat)
-    → Mistral / Claude / Gemini via AI Gateway
-    → réponse streamée au visiteur
+Visiteur → widget JS → /api/chat (Vercel) → Mistral / Claude / Gemini (AI Gateway) → stream
 ```
 
-Ollama n'intervient que si l'API tourne sur ta machine locale.
+Ollama n'intervient qu'en local.
 
-### Déployer sur Vercel avec un vrai modèle
+## Déployer sur Vercel
 
-1. Activer **AI Gateway** dans le dashboard Vercel (Settings → AI Gateway)
-2. Configurer les variables d'environnement sur Vercel :
+1. Activer **AI Gateway** (Settings → AI Gateway)
+2. Variables sur Vercel :
    ```
    BULLE_PROVIDER=gateway
    BULLE_MODEL=mistral/mistral-small-latest
    NEXT_PUBLIC_BULLE_URL=https://ton-domaine-bulle.vercel.app
    ```
-3. Sur tes sites clients, pointer `data-api` vers l'URL Vercel :
+3. Sur les sites clients :
    ```html
    <script
      src="https://ton-domaine-bulle.vercel.app/widget/bulle.js"
@@ -54,48 +61,24 @@ Ollama n'intervient que si l'API tourne sur ta machine locale.
    ></script>
    ```
 
-## Modèle IA (sans OpenAI)
+## Modèles IA
 
-Par défaut, Bulle utilise **Ollama** en local (gratuit, sans clé API).
+### Ollama (local)
 
-### Option 1 : Ollama (recommandé pour tester)
-
-1. Installer [Ollama](https://ollama.com)
-2. Télécharger un modèle :
-   ```bash
-   ollama pull llama3.2
-   ```
-3. Dans `.env` :
-   ```env
-   BULLE_PROVIDER=ollama
-   BULLE_MODEL=llama3.2
-   ```
-
-### Option 2 : Mistral
-
-```env
-BULLE_PROVIDER=mistral
-BULLE_MODEL=mistral-small-latest
-MISTRAL_API_KEY=votre_cle
+```bash
+ollama pull llama3.2
 ```
 
-### Option 3 : Anthropic (Claude)
-
 ```env
-BULLE_PROVIDER=anthropic
-BULLE_MODEL=claude-3-5-haiku-latest
-ANTHROPIC_API_KEY=votre_cle
+BULLE_PROVIDER=ollama
+BULLE_MODEL=llama3.2
 ```
 
-### Option 4 : Google (Gemini)
+### Mistral / Anthropic / Google
 
-```env
-BULLE_PROVIDER=google
-BULLE_MODEL=gemini-2.0-flash
-GOOGLE_GENERATIVE_AI_API_KEY=votre_cle
-```
+Voir `.env.example` pour `MISTRAL_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`.
 
-## Intégration sur un site externe
+## Intégration site externe
 
 ```html
 <script
@@ -106,16 +89,28 @@ GOOGLE_GENERATIVE_AI_API_KEY=votre_cle
 ></script>
 ```
 
-En production, remplacer par l'URL de votre serveur Bulle déployé.
+Générer une clé : `npm run generate-site-key`
 
 ## Variables d'environnement
 
 | Variable | Description |
 |---|---|
-| `BULLE_PROVIDER` | `ollama`, `mistral`, `anthropic` ou `google` |
+| `BULLE_PROVIDER` | `ollama`, `mistral`, `anthropic`, `google`, `gateway` |
 | `BULLE_MODEL` | Nom du modèle selon le provider |
-| `OLLAMA_BASE_URL` | Non utilisé (Ollama sur `localhost:11434` par défaut) |
 | `MISTRAL_API_KEY` | Clé API Mistral |
 | `ANTHROPIC_API_KEY` | Clé API Anthropic |
 | `GOOGLE_GENERATIVE_AI_API_KEY` | Clé API Google |
 | `NEXT_PUBLIC_BULLE_URL` | URL publique du serveur Bulle |
+
+## Scripts
+
+```bash
+npm run dev      # Next dev :3001
+npm run build    # production
+npm run start    # serveur prod local
+npm run lint
+```
+
+## Contact
+
+- Hugo Davion — [bulletonsite.com](https://bulletonsite.com)
