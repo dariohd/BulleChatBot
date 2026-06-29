@@ -16,18 +16,123 @@
     return;
   }
 
+  function getSessionId() {
+    var key = "bulle-session-" + siteKey;
+    try {
+      var existing = localStorage.getItem(key);
+      if (existing) return existing;
+      var id =
+        "sess_" +
+        Math.random().toString(36).slice(2) +
+        Date.now().toString(36);
+      localStorage.setItem(key, id);
+      return id;
+    } catch (e) {
+      return "sess_" + Date.now();
+    }
+  }
+
+  var sessionId = getSessionId();
+  var messagesStorageKey = "bulle-messages-" + siteKey;
+
   var config = {
     name: "Bulle",
     welcomeMessage: "Bonjour, je suis Bulle. Comment puis-je vous aider ?",
     primaryColor: "#2563eb",
     language: "fr",
+    fontFamily:
+      "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+    panelBg: "#ffffff",
+    messagesBg: "#f8fafc",
   };
+
+  function cssColorToHex(color) {
+    if (!color) return null;
+    var value = color.trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(value)) return value;
+    var rgb = value.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (!rgb) return null;
+    return (
+      "#" +
+      [rgb[1], rgb[2], rgb[3]]
+        .map(function (n) {
+          var hex = parseInt(n, 10).toString(16);
+          return hex.length === 1 ? "0" + hex : hex;
+        })
+        .join("")
+    );
+  }
+
+  function readHostCssVar(name) {
+    try {
+      return getComputedStyle(document.documentElement)
+        .getPropertyValue(name)
+        .trim();
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function readHostFont() {
+    try {
+      var family = getComputedStyle(document.body).fontFamily;
+      if (!family) return null;
+      return family;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function resolveTheme(apiData) {
+    var color =
+      (apiData && apiData.primaryColor) ||
+      script.getAttribute("data-primary-color") ||
+      cssColorToHex(readHostCssVar("--accent")) ||
+      cssColorToHex(readHostCssVar("--primary-color")) ||
+      config.primaryColor;
+    var fontFamily =
+      script.getAttribute("data-font-family") ||
+      readHostFont() ||
+      config.fontFamily;
+    var panelBg =
+      script.getAttribute("data-panel-bg") ||
+      cssColorToHex(readHostCssVar("--bg-elevated")) ||
+      cssColorToHex(readHostCssVar("--surface")) ||
+      config.panelBg;
+    var messagesBg =
+      script.getAttribute("data-messages-bg") ||
+      cssColorToHex(readHostCssVar("--bg")) ||
+      config.messagesBg;
+    return {
+      primaryColor: color,
+      fontFamily: fontFamily,
+      panelBg: panelBg,
+      messagesBg: messagesBg,
+    };
+  }
+
+  function applyTheme(theme) {
+    config.primaryColor = theme.primaryColor;
+    config.fontFamily = theme.fontFamily;
+    config.panelBg = theme.panelBg;
+    config.messagesBg = theme.messagesBg;
+    styleEl.textContent = createStyles(theme);
+  }
 
   var state = {
     open: false,
     loading: false,
     messages: [],
   };
+
+  try {
+    var savedMessages = sessionStorage.getItem(messagesStorageKey);
+    if (savedMessages) {
+      state.messages = JSON.parse(savedMessages);
+    }
+  } catch (e) {
+    // ignore
+  }
 
   function extractPageContext() {
     var metaDesc = document.querySelector('meta[name="description"]');
@@ -67,16 +172,24 @@
     };
   }
 
-  function createStyles(color) {
+  function createStyles(theme) {
+    var color = theme.primaryColor || theme;
+    var font = theme.fontFamily || config.fontFamily;
+    var panelBg = theme.panelBg || config.panelBg;
+    var messagesBg = theme.messagesBg || config.messagesBg;
     return (
-      ":host { all: initial; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }" +
+      ":host { all: initial; font-family: " +
+      font +
+      "; }" +
       ".bulle-root { position: fixed; bottom: 24px; right: 24px; z-index: 2147483646; }" +
       ".bulle-toggle { width: 60px; height: 60px; border-radius: 50%; border: none; cursor: pointer; background: " +
       color +
       "; color: #fff; box-shadow: 0 8px 32px rgba(0,0,0,.18); display: flex; align-items: center; justify-content: center; transition: transform .2s, box-shadow .2s; }" +
       ".bulle-toggle:hover { transform: scale(1.05); box-shadow: 0 12px 40px rgba(0,0,0,.22); }" +
       ".bulle-toggle svg { width: 28px; height: 28px; }" +
-      ".bulle-panel { position: absolute; bottom: 76px; right: 0; width: 380px; max-width: calc(100vw - 32px); height: 520px; max-height: calc(100vh - 120px); background: #fff; border-radius: 16px; box-shadow: 0 16px 48px rgba(0,0,0,.16); display: flex; flex-direction: column; overflow: hidden; opacity: 0; transform: translateY(12px) scale(.96); pointer-events: none; transition: opacity .25s, transform .25s; }" +
+      ".bulle-panel { position: absolute; bottom: 76px; right: 0; width: 380px; max-width: calc(100vw - 32px); height: 520px; max-height: calc(100vh - 120px); background: " +
+      panelBg +
+      "; border-radius: 16px; box-shadow: 0 16px 48px rgba(0,0,0,.16); display: flex; flex-direction: column; overflow: hidden; opacity: 0; transform: translateY(12px) scale(.96); pointer-events: none; transition: opacity .25s, transform .25s; }" +
       ".bulle-panel.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }" +
       ".bulle-header { padding: 16px 20px; background: " +
       color +
@@ -86,14 +199,21 @@
       ".bulle-header-text p { margin: 2px 0 0; font-size: 12px; opacity: .85; }" +
       ".bulle-close { margin-left: auto; background: none; border: none; color: #fff; cursor: pointer; opacity: .8; padding: 4px; }" +
       ".bulle-close:hover { opacity: 1; }" +
-      ".bulle-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; background: #f8fafc; }" +
+      ".bulle-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; background: " +
+      messagesBg +
+      "; }" +
       ".bulle-msg { max-width: 85%; padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5; word-wrap: break-word; }" +
       ".bulle-msg.user { align-self: flex-end; background: " +
       color +
       "; color: #fff; border-bottom-right-radius: 4px; }" +
-      ".bulle-msg.assistant { align-self: flex-start; background: #fff; color: #1e293b; border: 1px solid #e2e8f0; border-bottom-left-radius: 4px; }" +
+      ".bulle-msg.assistant { align-self: flex-start; background: " +
+      panelBg +
+      "; color: #1e293b; border: 1px solid #e2e8f0; border-bottom-left-radius: 4px; }" +
+      ".bulle-msg.assistant a { color: " + color + "; text-decoration: underline; word-break: break-all; }" +
       ".bulle-msg.typing { color: #94a3b8; font-style: italic; }" +
-      ".bulle-input-area { padding: 12px 16px; border-top: 1px solid #e2e8f0; background: #fff; display: flex; gap: 8px; }" +
+      ".bulle-input-area { padding: 12px 16px; border-top: 1px solid #e2e8f0; background: " +
+      panelBg +
+      "; display: flex; gap: 8px; }" +
       ".bulle-input { flex: 1; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; font-size: 14px; outline: none; font-family: inherit; resize: none; max-height: 80px; }" +
       ".bulle-input:focus { border-color: " +
       color +
@@ -104,7 +224,9 @@
       color +
       "; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }" +
       ".bulle-send:disabled { opacity: .5; cursor: not-allowed; }" +
-      ".bulle-powered { text-align: center; padding: 6px; font-size: 10px; color: #94a3b8; background: #fff; }" +
+      ".bulle-powered { text-align: center; padding: 6px; font-size: 10px; color: #94a3b8; background: " +
+      panelBg +
+      "; }" +
       "@media (max-width: 480px) { .bulle-panel { width: calc(100vw - 16px); right: -8px; height: calc(100vh - 100px); } .bulle-root { bottom: 16px; right: 16px; } }"
     );
   }
@@ -135,6 +257,8 @@
     '<button class="bulle-close" aria-label="Fermer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>';
 
   var messagesEl = el("div", "bulle-messages");
+  messagesEl.setAttribute("aria-live", "polite");
+  messagesEl.setAttribute("aria-relevant", "additions");
   var inputArea = el("div", "bulle-input-area");
   var textarea = el("textarea", "bulle-input");
   textarea.setAttribute("rows", "1");
@@ -145,7 +269,7 @@
   inputArea.appendChild(textarea);
   inputArea.appendChild(sendBtn);
 
-  var powered = el("div", "bulle-powered", "Propulsé par Bulle");
+  var powered = el("div", "bulle-powered", "Assistant IA · Propulsé par Bulle");
 
   panel.appendChild(header);
   panel.appendChild(messagesEl);
@@ -159,21 +283,43 @@
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>';
   root.appendChild(toggle);
 
+  function persistMessages() {
+    try {
+      sessionStorage.setItem(messagesStorageKey, JSON.stringify(state.messages));
+    } catch (e) {
+      // ignore
+    }
+  }
+
   function renderMessages() {
     messagesEl.innerHTML = "";
     state.messages.forEach(function (msg) {
-      messagesEl.appendChild(el("div", "bulle-msg " + msg.role, escapeHtml(msg.content)));
+      messagesEl.appendChild(el("div", "bulle-msg " + msg.role, formatMessage(msg.content)));
     });
     if (state.loading) {
       messagesEl.appendChild(el("div", "bulle-msg assistant typing", "Bulle réfléchit..."));
     }
     messagesEl.scrollTop = messagesEl.scrollHeight;
+    persistMessages();
   }
 
   function escapeHtml(text) {
     var d = document.createElement("div");
     d.textContent = text;
-    return d.innerHTML.replace(/\n/g, "<br>");
+    return d.innerHTML;
+  }
+
+  function formatMessage(text) {
+    var escaped = escapeHtml(text).replace(/\n/g, "<br>");
+    escaped = escaped.replace(
+      /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+      '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
+    );
+    escaped = escaped.replace(
+      /(^|[\s(])((https?:\/\/)[^\s<)]+)/g,
+      '$1<a href="$2" target="_blank" rel="noopener noreferrer">$2</a>'
+    );
+    return escaped;
   }
 
   function togglePanel() {
@@ -219,12 +365,22 @@
       },
       body: JSON.stringify({
         siteKey: siteKey,
+        sessionId: sessionId,
         pageContext: pageContext,
         messages: chatMessages,
       }),
     })
       .then(function (res) {
-        if (!res.ok) throw new Error("Erreur réseau");
+        if (!res.ok) {
+          return res
+            .json()
+            .catch(function () {
+              return {};
+            })
+            .then(function (body) {
+              throw new Error(body.error || "HTTP " + res.status);
+            });
+        }
         if (!res.body) throw new Error("Pas de flux");
 
         var reader = res.body.getReader();
@@ -247,8 +403,16 @@
 
         return read();
       })
-      .catch(function () {
+      .catch(function (err) {
+        console.error("[Bulle] chat:", err);
         state.loading = false;
+        if (
+          state.messages.length > 0 &&
+          state.messages[state.messages.length - 1].role === "assistant" &&
+          !state.messages[state.messages.length - 1].content
+        ) {
+          state.messages.pop();
+        }
         state.messages.push({
           role: "assistant",
           content:
@@ -267,6 +431,14 @@
   });
 
   function syncSiteIndex() {
+    var syncKey = "bulle-sync-" + siteKey;
+    try {
+      if (sessionStorage.getItem(syncKey)) return;
+      sessionStorage.setItem(syncKey, "1");
+    } catch (e) {
+      // sessionStorage indisponible
+    }
+
     fetch(apiBase + "/api/index/sync", {
       method: "POST",
       headers: {
@@ -282,6 +454,8 @@
 
   syncSiteIndex();
 
+  applyTheme(resolveTheme());
+
   fetch(apiBase + "/api/sites?siteKey=" + encodeURIComponent(siteKey))
     .then(function (res) {
       return res.ok ? res.json() : null;
@@ -290,15 +464,14 @@
       if (!data) return;
       config.name = data.name || config.name;
       config.welcomeMessage = data.welcomeMessage || config.welcomeMessage;
-      config.primaryColor = data.primaryColor || config.primaryColor;
       config.language = data.language || config.language;
 
-      styleEl.textContent = createStyles(config.primaryColor);
+      applyTheme(resolveTheme(data));
       header.querySelector(".bulle-name").textContent = "Bulle";
       header.querySelector(".bulle-subtitle").textContent =
         "Assistant de " + config.name;
     })
     .catch(function () {
-      styleEl.textContent = createStyles(config.primaryColor);
+      applyTheme(resolveTheme());
     });
 })();

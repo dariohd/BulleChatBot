@@ -1,4 +1,4 @@
-import { reindexAllSites } from "@/lib/index/service";
+import { reindexNextSite } from "@/lib/index/service";
 import { NextResponse } from "next/server";
 
 export const maxDuration = 60;
@@ -7,15 +7,22 @@ export async function GET(req: Request) {
   const auth = req.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
 
-  if (cronSecret && auth !== `Bearer ${cronSecret}`) {
+  if (!cronSecret) {
+    return NextResponse.json(
+      { error: "CRON_SECRET non configuré" },
+      { status: 500 }
+    );
+  }
+
+  if (auth !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
-  const results = await reindexAllSites();
+  const result = await reindexNextSite();
 
   return NextResponse.json({
-    ok: true,
+    ok: result.ok,
     reindexedAt: new Date().toISOString(),
-    results,
+    result,
   });
 }

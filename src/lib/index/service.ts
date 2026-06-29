@@ -1,25 +1,30 @@
 import { crawlSite } from "@/lib/crawl/crawler";
+import { enrichChunksWithEmbeddings } from "@/lib/index/embeddings";
 import { searchChunks } from "@/lib/index/search";
-import { loadIndex, saveIndex } from "@/lib/index/store";
 import {
-  getSiteByKey,
-  getSiteDomains,
-  listSites,
-  updateSite,
-} from "@/lib/sites";
+  acquireIndexLock,
+  extractHost,
+  getIndexKey,
+  loadIndex,
+  releaseIndexLock,
+  saveIndex,
+} from "@/lib/index/store";
+import { loadJson, saveJson } from "@/lib/storage/json-store";
+import { getSiteByKey, listSites } from "@/lib/sites";
 import type { ContentChunk, IndexStatus, SiteIndex } from "@/lib/types";
 
-const STALE_MS = parseInt(process.env.BULLE_INDEX_STALE_HOURS ?? "168", 10) * 3600000;
+const STALE_MS =
+  parseInt(process.env.BULLE_INDEX_STALE_HOURS ?? "168", 10) * 3600000;
+const CRON_CURSOR_PREFIX = "bulle-cron";
 
-export function resolveCrawlBaseUrl(
+export { extractHost, getIndexKey };
+
+export async function resolveCrawlBaseUrl(
   siteKey: string,
   origin?: string
-): string | null {
-  const site = getSiteByKey(siteKey);
+): Promise<string | null> {
+  const site = await getSiteByKey(siteKey);
   if (!site) return null;
-
-  if (site.baseUrl) return site.baseUrl;
-  if (process.env.BULLE_SITE_BASE_URL) return process.env.BULLE_SITE_BASE_URL;
 
   if (origin) {
     try {
@@ -32,24 +37,22 @@ export function resolveCrawlBaseUrl(
     }
   }
 
-  const domains = getSiteDomains(site);
-  const publicDomain = domains.find(
-    (d) => d !== "localhost" && d !== "127.0.0.1"
-  );
-  if (publicDomain) {
-    return `https://${publicDomain}`;
-  }
-
   if (!process.env.VERCEL) {
     if (origin) return origin.replace(/\/$/, "");
-    return "http://localhost:3000";
+    if (site.baseUrl) return site.baseUrl;
+    return "http://localhost:3001";
   }
 
+  if (site.baseUrl) return site.baseUrl;
   return null;
 }
 
-export async function getIndexStatus(siteKey: string): Promise<IndexStatus> {
-  const index = await loadIndex(siteKey);
+export async function getIndexStatus(
+  siteKey: string,
+  originOrUrl?: string
+): Promise<IndexStatus> {
+  const indexKey = getIndexKey(siteKey, originOrUrl);
+  const index = await loadIndex(indexKey);
   if (!index) {
     return { indexed: false, stale: true };
   }
@@ -69,90 +72,123 @@ export async function indexSite(
   siteKey: string,
   options?: { origin?: string; force?: boolean }
 ): Promise<SiteIndex> {
-  const site = getSiteByKey(siteKey);
+  const site = await getSiteByKey(siteKey);
   if (!site) {
     throw new Error("Site non reconnu");
   }
 
-  if (!options?.force) {
-    const status = await getIndexStatus(siteKey);
-    if (status.indexed && !status.stale) {
-      const existing = await loadIndex(siteKey);
-      if (existing) return existing;
-    }
-  }
-
-  const baseUrl = resolveCrawlBaseUrl(siteKey, options?.origin);
+  const baseUrl = await resolveCrawlBaseUrl(siteKey, options?.origin);
   if (!baseUrl) {
     throw new Error("Impossible de déterminer l'URL à indexer pour ce site");
   }
 
-  const crawled = await crawlSite(baseUrl);
-
-  const index: SiteIndex = {
-    siteKey,
-    baseUrl: crawled.baseUrl,
-    siteName: crawled.siteName,
-    siteSummary: crawled.siteSummary,
-    indexedAt: new Date().toISOString(),
-    pageCount: crawled.pageCount,
-    chunks: crawled.chunks,
-  };
-
-  await saveIndex(index);
-
-  if (crawled.siteName && crawled.siteName !== site.name) {
-    updateSite(siteKey, {
-      name: crawled.siteName,
-      language: crawled.language ?? site.language,
-      baseUrl: crawled.baseUrl,
-    });
-  } else {
-    updateSite(siteKey, { baseUrl: crawled.baseUrl });
+  const host = extractHost(baseUrl);
+  if (!host) {
+    throw new Error("URL à indexer invalide");
   }
 
-  return index;
+  const indexKey = getIndexKey(siteKey, baseUrl);
+
+  if (!acquireIndexLock(indexKey)) {
+    const existing = await loadIndex(indexKey);
+    if (existing) return existing;
+    throw new Error("Indexation déjà en cours pour ce site");
+  }
+
+  try {
+    if (!options?.force) {
+      const status = await getIndexStatus(siteKey, baseUrl);
+      if (status.indexed && !status.stale) {
+        const existing = await loadIndex(indexKey);
+        if (existing) return existing;
+      }
+    }
+
+    const crawled = await crawlSite(baseUrl);
+    const chunks = await enrichChunksWithEmbeddings(crawled.chunks);
+
+    const index: SiteIndex = {
+      siteKey,
+      host,
+      baseUrl: crawled.baseUrl,
+      siteName: crawled.siteName,
+      siteSummary: crawled.siteSummary,
+      indexedAt: new Date().toISOString(),
+      pageCount: crawled.pageCount,
+      chunks,
+    };
+
+    await saveIndex(indexKey, index);
+    return index;
+  } finally {
+    releaseIndexLock(indexKey);
+  }
 }
 
 export async function searchSiteKnowledge(
   siteKey: string,
-  query: string
+  query: string,
+  pageUrl?: string
 ): Promise<ContentChunk[]> {
-  const index = await loadIndex(siteKey);
+  const indexKey = getIndexKey(siteKey, pageUrl);
+  const index = await loadIndex(indexKey);
   if (!index || index.chunks.length === 0) return [];
   return searchChunks(index.chunks, query, 6);
 }
 
-export async function reindexAllSites(): Promise<
-  Array<{ siteKey: string; ok: boolean; error?: string }>
-> {
-  const results: Array<{ siteKey: string; ok: boolean; error?: string }> = [];
-
-  for (const site of listSites()) {
-    try {
-      await indexSite(site.siteKey, { force: true });
-      results.push({ siteKey: site.siteKey, ok: true });
-    } catch (error) {
-      results.push({
-        siteKey: site.siteKey,
-        ok: false,
-        error: error instanceof Error ? error.message : "Erreur inconnue",
-      });
-    }
+export async function reindexNextSite(): Promise<{
+  siteKey: string;
+  ok: boolean;
+  error?: string;
+}> {
+  const allSites = await listSites();
+  if (allSites.length === 0) {
+    return { siteKey: "", ok: true };
   }
 
-  return results;
+  const cursor =
+    (await loadJson<{ lastIndex: number }>(CRON_CURSOR_PREFIX, "reindex")) ?? {
+      lastIndex: -1,
+    };
+  const nextIndex = (cursor.lastIndex + 1) % allSites.length;
+  const site = allSites[nextIndex];
+
+  try {
+    const baseUrl =
+      site.baseUrl ??
+      (site.domain.split(",")[0]
+        ? `https://${site.domain.split(",")[0].trim()}`
+        : undefined);
+    await indexSite(site.siteKey, { origin: baseUrl, force: true });
+    await saveJson(CRON_CURSOR_PREFIX, "reindex", { lastIndex: nextIndex });
+    return { siteKey: site.siteKey, ok: true };
+  } catch (error) {
+    return {
+      siteKey: site.siteKey,
+      ok: false,
+      error: error instanceof Error ? error.message : "Erreur inconnue",
+    };
+  }
 }
 
 export async function getSiteIndexSummary(
-  siteKey: string
-): Promise<Pick<SiteIndex, "siteName" | "siteSummary" | "pageCount" | "indexedAt"> | null> {
-  const index = await loadIndex(siteKey);
+  siteKey: string,
+  pageUrl?: string
+): Promise<
+  Pick<
+    SiteIndex,
+    "siteName" | "siteSummary" | "pageCount" | "indexedAt" | "baseUrl" | "host"
+  > | null
+> {
+  const indexKey = getIndexKey(siteKey, pageUrl);
+  const index = await loadIndex(indexKey);
   if (!index) return null;
   return {
     siteName: index.siteName,
     siteSummary: index.siteSummary,
     pageCount: index.pageCount,
     indexedAt: index.indexedAt,
+    baseUrl: index.baseUrl,
+    host: index.host,
   };
 }

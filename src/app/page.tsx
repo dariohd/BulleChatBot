@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { getBullePublicUrl, getDemoSiteKey } from "@/lib/demo";
+import { getBullePublicUrl, getDemoSiteKey, getWidgetScriptPath } from "@/lib/demo";
 
 const baseUrl = getBullePublicUrl();
 
-export default function Home() {
-  const siteKey = getDemoSiteKey();
+export default async function Home() {
+  const siteKey = await getDemoSiteKey();
+  const widgetPath = getWidgetScriptPath();
   const snippet = `<script
-  src="${baseUrl}/widget/bulle.js"
+  src="${baseUrl}${widgetPath}"
   data-site-key="${siteKey}"
   data-api="${baseUrl}"
   defer
@@ -28,12 +29,20 @@ export default function Home() {
               </p>
             </div>
           </div>
-          <a
-            href="#integration"
-            className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
-          >
-            Intégrer sur un site
-          </a>
+          <div className="flex items-center gap-4">
+            <a
+              href="/admin"
+              className="text-sm text-[var(--muted)] hover:underline"
+            >
+              Administration
+            </a>
+            <a
+              href="#integration"
+              className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+            >
+              Intégrer sur un site
+            </a>
+          </div>
         </div>
       </header>
 
@@ -107,10 +116,10 @@ export default function Home() {
               </p>
               <pre className="mt-3 overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--background)] p-4 text-xs">
                 <code>{`POST ${baseUrl}/api/sites
+Authorization: Bearer <BULLE_ADMIN_SECRET>
 {
   "name": "Mon entreprise",
   "domain": "monsite.fr",
-  "instructions": "Tu es l'assistant de Mon Entreprise...",
   "welcomeMessage": "Bonjour !",
   "primaryColor": "#2563eb"
 }`}</code>
@@ -175,7 +184,7 @@ export default function Home() {
       </footer>
 
       <Script
-        src="/widget/bulle.js"
+        src={widgetPath}
         data-site-key={siteKey}
         data-api={baseUrl}
         strategy="lazyOnload"

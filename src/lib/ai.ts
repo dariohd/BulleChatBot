@@ -1,57 +1,37 @@
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createMistral } from "@ai-sdk/mistral";
 import { ollama } from "ai-sdk-ollama";
+import { cleanEnv } from "@/lib/env";
 
-export type BulleProvider =
-  | "ollama"
-  | "gateway"
-  | "mistral"
-  | "anthropic"
-  | "google";
+export type BulleProvider = "ollama" | "mistral";
 
 const DEFAULTS: Record<BulleProvider, string> = {
   ollama: "llama3.2",
-  gateway: "mistral/mistral-small-latest",
   mistral: "mistral-small-latest",
-  anthropic: "claude-3-5-haiku-latest",
-  google: "gemini-2.0-flash",
 };
 
 export function getBulleProvider(): BulleProvider {
-  const provider = process.env.BULLE_PROVIDER as BulleProvider | undefined;
-  if (provider && provider in DEFAULTS) return provider;
-  return process.env.VERCEL ? "gateway" : "ollama";
+  const provider = cleanEnv(process.env.BULLE_PROVIDER) as
+    | BulleProvider
+    | undefined;
+
+  if (provider === "ollama" || provider === "mistral") return provider;
+  if (cleanEnv(process.env.MISTRAL_API_KEY)) return "mistral";
+  if (process.env.VERCEL) return "mistral";
+  return "ollama";
 }
 
 export function getBulleModel() {
   const provider = getBulleProvider();
-  const modelId = process.env.BULLE_MODEL ?? DEFAULTS[provider];
+  const modelId = cleanEnv(process.env.BULLE_MODEL) ?? DEFAULTS[provider];
 
-  switch (provider) {
-    case "gateway":
-      // Format "provider/model" — routé via Vercel AI Gateway en prod
-      return modelId;
-    case "mistral": {
-      const mistral = createMistral({
-        apiKey: process.env.MISTRAL_API_KEY,
-      });
-      return mistral(modelId);
+  if (provider === "mistral") {
+    const apiKey = cleanEnv(process.env.MISTRAL_API_KEY);
+    if (!apiKey) {
+      throw new Error("MISTRAL_API_KEY manquante ou invalide");
     }
-    case "anthropic": {
-      const anthropic = createAnthropic({
-        apiKey: process.env.ANTHROPIC_API_KEY,
-      });
-      return anthropic(modelId);
-    }
-    case "google": {
-      const google = createGoogleGenerativeAI({
-        apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-      });
-      return google(modelId);
-    }
-    case "ollama":
-    default:
-      return ollama(modelId);
+    const mistral = createMistral({ apiKey });
+    return mistral(modelId);
   }
+
+  return ollama(modelId);
 }

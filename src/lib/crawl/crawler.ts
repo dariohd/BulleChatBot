@@ -13,7 +13,6 @@ export interface CrawlResult {
   baseUrl: string;
   siteName: string;
   siteSummary?: string;
-  language?: string;
   pageCount: number;
   chunks: ContentChunk[];
 }
@@ -25,16 +24,16 @@ export async function crawlSite(baseUrl: string): Promise<CrawlResult> {
   }
 
   const baseHost = new URL(normalizedBase).hostname;
-  const queue: string[] = await discoverUrls(normalizedBase);
+  const pending = new Set<string>(await discoverUrls(normalizedBase));
   const visited = new Set<string>();
   const chunks: ContentChunk[] = [];
 
   let siteName = "";
   let siteSummary: string | undefined;
-  let language: string | undefined;
 
-  while (queue.length > 0 && visited.size < MAX_PAGES) {
-    const batch = queue.splice(0, 3);
+  while (pending.size > 0 && visited.size < MAX_PAGES) {
+    const batch = Array.from(pending).slice(0, 5);
+    for (const item of batch) pending.delete(item);
 
     await Promise.all(
       batch.map(async (rawUrl) => {
@@ -53,14 +52,13 @@ export async function crawlSite(baseUrl: string): Promise<CrawlResult> {
         if (!siteName && url === normalizedBase) {
           siteName = page.title;
           siteSummary = page.description;
-          language = page.language;
         }
 
         chunks.push(...chunkPage(page.url, page.title, page.content));
 
         for (const link of collectLinksFromPage(url, page.links, baseHost)) {
-          if (!visited.has(link) && !queue.includes(link) && !shouldSkipUrl(link)) {
-            queue.push(link);
+          if (!visited.has(link) && !pending.has(link) && !shouldSkipUrl(link)) {
+            pending.add(link);
           }
         }
       })
@@ -75,7 +73,6 @@ export async function crawlSite(baseUrl: string): Promise<CrawlResult> {
     baseUrl: normalizedBase,
     siteName: siteName || new URL(normalizedBase).hostname,
     siteSummary,
-    language,
     pageCount: visited.size,
     chunks,
   };

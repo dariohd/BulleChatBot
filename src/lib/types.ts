@@ -1,3 +1,8 @@
+export interface SiteQuotas {
+  maxChatsPerDay?: number;
+  maxSyncsPerDay?: number;
+}
+
 export interface SiteConfig {
   id: string;
   name: string;
@@ -10,6 +15,10 @@ export interface SiteConfig {
   welcomeMessage?: string;
   primaryColor?: string;
   createdAt: string;
+  quotas?: SiteQuotas;
+  webhookUrl?: string;
+  logConversations?: boolean;
+  conversationRetentionDays?: number;
 }
 
 export interface PageContext {
@@ -25,6 +34,7 @@ export interface ChatRequest {
   messages: Array<{ role: "user" | "assistant"; content: string }>;
   pageContext: PageContext;
   siteKey: string;
+  sessionId?: string;
 }
 
 export interface ContentChunk {
@@ -32,10 +42,24 @@ export interface ContentChunk {
   url: string;
   title: string;
   text: string;
+  embedding?: number[];
+}
+
+export interface SitePublicConfig {
+  id: string;
+  name: string;
+  welcomeMessage?: string;
+  primaryColor?: string;
+  language?: string;
+}
+
+export interface SiteAdminView extends SiteConfig {
+  domains: string[];
 }
 
 export interface SiteIndex {
   siteKey: string;
+  host: string;
   baseUrl: string;
   siteName?: string;
   siteSummary?: string;
@@ -47,7 +71,6 @@ export interface SiteIndex {
 export interface IndexSyncRequest {
   siteKey: string;
   origin?: string;
-  pageUrl?: string;
   force?: boolean;
 }
 
@@ -58,4 +81,20 @@ export interface IndexStatus {
   chunkCount?: number;
   baseUrl?: string;
   stale?: boolean;
+}
+
+export interface ConversationLogEntry {
+  role: "user" | "assistant";
+  content: string;
+  at: string;
+}
+
+export interface ConversationLog {
+  siteKey: string;
+  sessionId: string;
+  host?: string;
+  pageUrl?: string;
+  entries: ConversationLogEntry[];
+  createdAt: string;
+  updatedAt: string;
 }

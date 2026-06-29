@@ -1,4 +1,10 @@
 import * as cheerio from "cheerio";
+import {
+  PAGE_CONTEXT_EXCLUDE_SELECTORS,
+  PAGE_CONTEXT_HEADING_SELECTOR,
+  PAGE_CONTEXT_MAX_HEADINGS,
+  normalizePageText,
+} from "@/lib/page-context";
 
 export interface ExtractedPage {
   url: string;
@@ -10,10 +16,12 @@ export interface ExtractedPage {
   links: string[];
 }
 
+const EXCLUDE_SELECTOR = PAGE_CONTEXT_EXCLUDE_SELECTORS.join(", ");
+
 export function extractPageContent(url: string, html: string): ExtractedPage {
   const $ = cheerio.load(html);
 
-  $("script, style, nav, footer, noscript, iframe, svg, .bulle-widget-root").remove();
+  $(EXCLUDE_SELECTOR).remove();
 
   const title =
     $("title").first().text().trim() ||
@@ -26,11 +34,11 @@ export function extractPageContent(url: string, html: string): ExtractedPage {
 
   const language = $("html").attr("lang")?.trim();
 
-  const headings = $("h1, h2, h3")
+  const headings = $(PAGE_CONTEXT_HEADING_SELECTOR)
     .map((_, el) => $(el).text().trim())
     .get()
     .filter(Boolean)
-    .slice(0, 20);
+    .slice(0, PAGE_CONTEXT_MAX_HEADINGS);
 
   const main =
     $("main").first().length > 0
@@ -41,11 +49,7 @@ export function extractPageContent(url: string, html: string): ExtractedPage {
           ? $('[role="main"]').first()
           : $("body");
 
-  const content = main
-    .text()
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 12000);
+  const content = normalizePageText(main.text(), 12000);
 
   const links = $("a[href]")
     .map((_, el) => $(el).attr("href") ?? "")

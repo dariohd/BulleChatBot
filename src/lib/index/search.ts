@@ -1,4 +1,5 @@
 import type { ContentChunk } from "@/lib/types";
+import { cosineSimilarity, embedQuery } from "./embeddings";
 
 function tokenize(text: string): string[] {
   return text
@@ -9,7 +10,7 @@ function tokenize(text: string): string[] {
     .filter((t) => t.length > 2);
 }
 
-export function searchChunks(
+export function searchChunksByKeywords(
   chunks: ContentChunk[],
   query: string,
   limit = 6
@@ -37,4 +38,41 @@ export function searchChunks(
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
     .map((item) => item.chunk);
+}
+
+function searchChunksByEmbeddings(
+  chunks: ContentChunk[],
+  queryEmbedding: number[],
+  limit = 6
+): ContentChunk[] {
+  const scored = chunks
+    .filter((chunk) => chunk.embedding && chunk.embedding.length > 0)
+    .map((chunk) => ({
+      chunk,
+      score: cosineSimilarity(queryEmbedding, chunk.embedding!),
+    }))
+    .filter((item) => item.score > 0.2)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+
+  return scored.map((item) => item.chunk);
+}
+
+export async function searchChunks(
+  chunks: ContentChunk[],
+  query: string,
+  limit = 6
+): Promise<ContentChunk[]> {
+  if (chunks.length === 0) return [];
+
+  const hasEmbeddings = chunks.some((c) => c.embedding?.length);
+  if (hasEmbeddings) {
+    const queryEmbedding = await embedQuery(query);
+    if (queryEmbedding) {
+      const results = searchChunksByEmbeddings(chunks, queryEmbedding, limit);
+      if (results.length > 0) return results;
+    }
+  }
+
+  return searchChunksByKeywords(chunks, query, limit);
 }

@@ -7,14 +7,16 @@ Assistant IA embarquable pour sites web — widget JS + API Next.js.
 | **URL production** | https://bulle-chatbot.vercel.app |
 | **Dépôt GitHub** | [github.com/dariohd/BulleChatBot](https://github.com/dariohd/BulleChatBot) |
 | **Notes techniques** | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| **Intégration client** | [docs/INTEGRATION.md](docs/INTEGRATION.md) |
 
 Bulle tourne sur le **port 3001** en local pour éviter le conflit avec bulletonsite (3000).
 
 ## Stack
 
 - **Next.js 15** (App Router) + TypeScript
-- **Vercel AI SDK** — Ollama, Mistral, Anthropic, Google, AI Gateway
+- **Mistral** (chat + embeddings RAG) ou **Ollama** en local
 - Widget embarquable (`public/widget/bulle.js`)
+- Persistance Vercel Blob (sites, index, analytics)
 - Tailwind CSS 4
 
 ## Démarrage rapide
@@ -32,34 +34,37 @@ npm run dev
 | Environnement | Provider | Pourquoi |
 |---|---|---|
 | **Local** (`npm run dev`) | `ollama` | Gratuit, sur la machine |
-| **Vercel** (prod) | `gateway` | Ollama inaccessible depuis le cloud |
+| **Vercel** (prod) | `mistral` | API Mistral directe, fiable |
 
-Le widget sur un site client **n'exécute pas l'IA**. Il envoie les messages à l'API Bulle (Vercel), qui appelle le modèle :
+Le widget sur un site client **n'exécute pas l'IA**. Il envoie les messages à l'API Bulle (Vercel), qui appelle Mistral :
 
 ```
-Visiteur → widget JS → /api/chat (Vercel) → Mistral / Claude / Gemini (AI Gateway) → stream
+Visiteur → widget JS → /api/chat (Vercel) → Mistral → stream
 ```
-
-Ollama n'intervient qu'en local.
 
 ## Déployer sur Vercel
 
-1. Activer **AI Gateway** (Settings → AI Gateway)
-2. Variables sur Vercel :
+1. Variables sur Vercel :
    ```
-   BULLE_PROVIDER=gateway
-   BULLE_MODEL=mistral/mistral-small-latest
-   NEXT_PUBLIC_BULLE_URL=https://ton-domaine-bulle.vercel.app
+   BULLE_PROVIDER=mistral
+   BULLE_MODEL=mistral-small-latest
+   MISTRAL_API_KEY=...
+   BULLE_ADMIN_SECRET=...
+   NEXT_PUBLIC_BULLE_URL=https://bulle-chatbot.vercel.app
+   BLOB_READ_WRITE_TOKEN=...
+   CRON_SECRET=...
    ```
-3. Sur les sites clients :
+2. Sur les sites clients :
    ```html
    <script
-     src="https://ton-domaine-bulle.vercel.app/widget/bulle.js"
+     src="https://bulle-chatbot.vercel.app/widget/bulle.js"
      data-site-key="bulle_..."
-     data-api="https://ton-domaine-bulle.vercel.app"
+     data-api="https://bulle-chatbot.vercel.app"
      defer
    ></script>
    ```
+
+Voir [DEPLOY.md](DEPLOY.md) pour le détail.
 
 ## Modèles IA
 
@@ -74,9 +79,28 @@ BULLE_PROVIDER=ollama
 BULLE_MODEL=llama3.2
 ```
 
-### Mistral / Anthropic / Google
+### Mistral (production)
 
-Voir `.env.example` pour `MISTRAL_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`.
+```env
+BULLE_PROVIDER=mistral
+BULLE_MODEL=mistral-small-latest
+MISTRAL_API_KEY=...
+```
+
+Avec `MISTRAL_API_KEY`, Bulle indexe aussi les embeddings (`mistral-embed`) pour un RAG plus précis.
+
+## Multi-sites
+
+Chaque client a sa propre clé site. Création via l'API admin :
+
+```bash
+curl -X POST https://bulle-chatbot.vercel.app/api/sites \
+  -H "Authorization: Bearer $BULLE_ADMIN_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Mon client","domain":"monsite.fr"}'
+```
+
+Les sites sont persistés dans Vercel Blob. Tableau de bord : `/admin`.
 
 ## Intégration site externe
 
@@ -95,12 +119,14 @@ Générer une clé : `npm run generate-site-key`
 
 | Variable | Description |
 |---|---|
-| `BULLE_PROVIDER` | `ollama`, `mistral`, `anthropic`, `google`, `gateway` |
-| `BULLE_MODEL` | Nom du modèle selon le provider |
-| `MISTRAL_API_KEY` | Clé API Mistral |
-| `ANTHROPIC_API_KEY` | Clé API Anthropic |
-| `GOOGLE_GENERATIVE_AI_API_KEY` | Clé API Google |
+| `BULLE_PROVIDER` | `ollama` ou `mistral` |
+| `BULLE_MODEL` | Nom du modèle |
+| `MISTRAL_API_KEY` | Clé API Mistral (chat + embeddings) |
+| `BULLE_ADMIN_SECRET` | Secret pour créer des sites et accéder à `/admin` |
+| `BLOB_READ_WRITE_TOKEN` | Persistance index, sites et analytics |
+| `CRON_SECRET` | Protection du cron de re-indexation |
 | `NEXT_PUBLIC_BULLE_URL` | URL publique du serveur Bulle |
+| `BULLE_CRAWL_MAX_PAGES` | Limite de pages crawlées (défaut : 30) |
 
 ## Scripts
 
@@ -109,6 +135,7 @@ npm run dev      # Next dev :3001
 npm run build    # production
 npm run start    # serveur prod local
 npm run lint
+npm run test     # tests unitaires
 ```
 
 ## Contact

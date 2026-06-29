@@ -6,8 +6,8 @@ URL production : **https://bulle-chatbot.vercel.app**
 
 À l'installation du widget, Bulle :
 
-1. **Explore le site** (sitemap + pages liées, jusqu'à 30 pages)
-2. **Indexe le contenu** (stocké dans Vercel Blob)
+1. **Explore le site** (robots.txt, sitemap, pages liées, jusqu'à 30 pages par défaut)
+2. **Indexe le contenu** (stocké dans Vercel Blob, avec embeddings Mistral si configuré)
 3. **Répond avec RAG** (page actuelle + extraits pertinents du site)
 4. **Se met à jour** chaque semaine (cron dimanche 4h)
 
@@ -17,15 +17,30 @@ Aucune config métier requise. Un script + une clé site.
 
 | Variable | Valeur |
 |---|---|
-| `BULLE_PROVIDER` | `gateway` |
-| `BULLE_MODEL` | `mistral/mistral-small-latest` |
-| `BULLE_SITE_KEY` | clé générée (`npm run generate-site-key`) |
+| `BULLE_PROVIDER` | `mistral` |
+| `BULLE_MODEL` | `mistral-small-latest` |
+| `MISTRAL_API_KEY` | clé API Mistral |
+| `BULLE_ADMIN_SECRET` | secret pour l'admin et la création de sites |
+| `BULLE_SITE_KEY` | clé du site principal (bootstrap initial) |
 | `BULLE_SITE_DOMAINS` | domaines autorisés, séparés par virgules |
-| `BULLE_SITE_BASE_URL` | URL publique du site à crawler |
 | `BULLE_SITE_NAME` | nom initial (écrasé après indexation) |
 | `NEXT_PUBLIC_BULLE_URL` | `https://bulle-chatbot.vercel.app` |
-| `BLOB_READ_WRITE_TOKEN` | auto via Vercel Blob (store `bulle-index`) |
+| `BLOB_READ_WRITE_TOKEN` | auto via Vercel Blob |
 | `CRON_SECRET` | secret pour le cron de re-indexation |
+
+## Nouveau client
+
+1. Créer le site via l'API (recommandé) :
+   ```bash
+   curl -X POST https://bulle-chatbot.vercel.app/api/sites \
+     -H "Authorization: Bearer $BULLE_ADMIN_SECRET" \
+     -H "Content-Type: application/json" \
+     -d '{"name":"Client XYZ","domain":"client.fr"}'
+   ```
+2. Récupérer la `siteKey` dans la réponse
+3. Donner le snippet au client (voir [INTEGRATION.md](INTEGRATION.md))
+
+Les sites sont persistés automatiquement dans Blob. Plus besoin de redéployer pour chaque client.
 
 ## Greffer sur un site client
 
@@ -40,10 +55,17 @@ Aucune config métier requise. Un script + une clé site.
 
 Le widget déclenche automatiquement `/api/index/sync` au premier chargement.
 
+## Tableau de bord
+
+https://bulle-chatbot.vercel.app/admin
+
+Connexion avec `BULLE_ADMIN_SECRET`. Affiche les sites, l'état d'indexation et les statistiques d'usage.
+
 ## Commandes utiles
 
 ```bash
-npm run generate-site-key    # nouvelle clé site
+npm run generate-site-key    # nouvelle clé site (manuel)
+npm run test                 # tests unitaires
 npx vercel deploy --prod     # redéployer
 npx vercel env ls            # voir les variables
 ```
@@ -56,9 +78,9 @@ curl -X POST https://bulle-chatbot.vercel.app/api/index/sync \
   -d '{"siteKey":"bulle_...","force":true}'
 ```
 
-## Nouveau client
+## Sécurité
 
-1. `npm run generate-site-key`
-2. Ajouter les variables `BULLE_SITE_*` sur Vercel (ou `BULLE_SITES` JSON pour plusieurs)
-3. Redéployer
-4. Donner le snippet au client
+- `GET /api/sites` sans `siteKey` : réservé à l'admin (Bearer token)
+- `GET /api/sites?siteKey=...` : config publique du widget (sans la clé)
+- `POST/PATCH /api/sites` : admin uniquement
+- Les clés API Mistral ne quittent jamais le serveur

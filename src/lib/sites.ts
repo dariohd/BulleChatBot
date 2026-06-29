@@ -1,8 +1,10 @@
 import { randomBytes } from "crypto";
-import type { SiteConfig } from "./types";
+import { deleteJson, loadJson, listJsonIds, saveJson } from "@/lib/storage/json-store";
+import type { SiteConfig, SitePublicConfig, SiteAdminView } from "./types";
 
+const SITES_PREFIX = "bulle-sites";
 const sites = new Map<string, SiteConfig>();
-let bootstrapped = false;
+let loadPromise: Promise<void> | null = null;
 
 function generateSiteKey(): string {
   return `bulle_${randomBytes(24).toString("hex")}`;
@@ -24,40 +26,54 @@ function parseDomains(domains: string): string[] {
     .filter(Boolean);
 }
 
-function registerSite(site: SiteConfig) {
+function hostMatchesDomain(host: string, domain: string): boolean {
+  const normalizedHost = host.replace(/^www\./, "");
+  const normalizedDomain = domain.replace(/^www\./, "");
+  return normalizedHost === normalizedDomain;
+}
+
+async function persistSite(site: SiteConfig): Promise<void> {
   sites.set(site.siteKey, site);
+  await saveJson(SITES_PREFIX, site.siteKey, site);
 }
 
-function ensureBootstrapped() {
-  if (bootstrapped) return;
-  bootstrapped = true;
-  bootstrapSites();
+async function loadPersistedSites(): Promise<void> {
+  const ids = await listJsonIds(SITES_PREFIX);
+  for (const siteKey of ids) {
+    const site = await loadJson<SiteConfig>(SITES_PREFIX, siteKey);
+    if (site?.siteKey) {
+      sites.set(site.siteKey, site);
+    }
+  }
 }
 
-function bootstrapSites() {
+function bootstrapFromEnv(): SiteConfig[] {
+  const created: SiteConfig[] = [];
+
   const fromJson = process.env.BULLE_SITES;
   if (fromJson) {
     try {
       const parsed = JSON.parse(fromJson) as SiteConfig[];
       for (const site of parsed) {
-        registerSite({
+        created.push({
           ...site,
-          domain: site.domain,
           createdAt: site.createdAt ?? new Date().toISOString(),
         });
       }
-      return;
+      return created;
     } catch (error) {
       console.error("[Bulle] BULLE_SITES JSON invalide:", error);
     }
   }
 
   if (process.env.BULLE_SITE_KEY) {
-    registerSite({
+    created.push({
       id: process.env.BULLE_SITE_ID ?? "main",
       name: process.env.BULLE_SITE_NAME ?? "Mon site",
-      domain: process.env.BULLE_SITE_DOMAINS ?? process.env.BULLE_SITE_DOMAIN ?? "",
-      baseUrl: process.env.BULLE_SITE_BASE_URL,
+      domain:
+        process.env.BULLE_SITE_DOMAINS ??
+        process.env.BULLE_SITE_DOMAIN ??
+        "",
       siteKey: process.env.BULLE_SITE_KEY,
       instructions: process.env.BULLE_SITE_INSTRUCTIONS,
       tone: process.env.BULLE_SITE_TONE ?? "professionnel et chaleureux",
@@ -68,22 +84,50 @@ function bootstrapSites() {
       primaryColor: process.env.BULLE_SITE_COLOR ?? "#2563eb",
       createdAt: new Date().toISOString(),
     });
+  }
+
+  return created;
+}
+
+async function ensureLoaded(): Promise<void> {
+  if (loadPromise) {
+    await loadPromise;
     return;
   }
 
-  if (!process.env.VERCEL) {
-    createSite({
-      name: "Site de démonstration",
-      domain: "localhost",
-      baseUrl: process.env.BULLE_SITE_BASE_URL ?? "http://localhost:3001",
-      welcomeMessage:
-        "Bonjour, je suis Bulle. Posez-moi une question sur ce site.",
-      primaryColor: "#2563eb",
-    });
-  }
+  loadPromise = (async () => {
+    await loadPersistedSites();
+
+    const fromEnv = bootstrapFromEnv();
+    for (const site of fromEnv) {
+      if (!sites.has(site.siteKey)) {
+        await persistSite(site);
+      }
+    }
+
+    if (sites.size === 0 && !process.env.VERCEL) {
+      const id = randomBytes(8).toString("hex");
+      const demoSite: SiteConfig = {
+        id,
+        name: "Site de démonstration",
+        domain: "localhost",
+        baseUrl: "http://localhost:3001",
+        siteKey: generateSiteKey(),
+        tone: "professionnel et chaleureux",
+        language: "fr",
+        welcomeMessage:
+          "Bonjour, je suis Bulle. Posez-moi une question sur ce site.",
+        primaryColor: "#2563eb",
+        createdAt: new Date().toISOString(),
+      };
+      await persistSite(demoSite);
+    }
+  })();
+
+  await loadPromise;
 }
 
-export function createSite(input: {
+export async function createSite(input: {
   name: string;
   domain: string;
   baseUrl?: string;
@@ -92,8 +136,12 @@ export function createSite(input: {
   language?: string;
   welcomeMessage?: string;
   primaryColor?: string;
-}): SiteConfig {
-  ensureBootstrapped();
+  quotas?: import("./types").SiteQuotas;
+  webhookUrl?: string;
+  logConversations?: boolean;
+  conversationRetentionDays?: number;
+}): Promise<SiteConfig> {
+  await ensureLoaded();
   const id = randomBytes(8).toString("hex");
   const site: SiteConfig = {
     id,
@@ -108,27 +156,33 @@ export function createSite(input: {
       input.welcomeMessage ??
       `Bonjour, je suis Bulle, l'assistant de ${input.name}. Comment puis-je vous aider ?`,
     primaryColor: input.primaryColor ?? "#2563eb",
+    quotas: input.quotas,
+    webhookUrl: input.webhookUrl,
+    logConversations: input.logConversations,
+    conversationRetentionDays: input.conversationRetentionDays,
     createdAt: new Date().toISOString(),
   };
-  registerSite(site);
+  await persistSite(site);
   return site;
 }
 
-export function getSiteByKey(siteKey: string): SiteConfig | undefined {
-  ensureBootstrapped();
+export async function getSiteByKey(
+  siteKey: string
+): Promise<SiteConfig | undefined> {
+  await ensureLoaded();
   return sites.get(siteKey);
 }
 
-export function listSites(): SiteConfig[] {
-  ensureBootstrapped();
+export async function listSites(): Promise<SiteConfig[]> {
+  await ensureLoaded();
   return Array.from(sites.values());
 }
 
-export function updateSite(
+export async function updateSite(
   siteKey: string,
   updates: Partial<Omit<SiteConfig, "id" | "siteKey" | "createdAt">>
-): SiteConfig | undefined {
-  ensureBootstrapped();
+): Promise<SiteConfig | undefined> {
+  await ensureLoaded();
   const site = sites.get(siteKey);
   if (!site) return undefined;
 
@@ -137,8 +191,33 @@ export function updateSite(
     ...updates,
     domain: updates.domain ?? site.domain,
   };
-  registerSite(updated);
+  await persistSite(updated);
   return updated;
+}
+
+export async function deleteSite(siteKey: string): Promise<boolean> {
+  await ensureLoaded();
+  if (!sites.has(siteKey)) return false;
+  sites.delete(siteKey);
+  await deleteJson(SITES_PREFIX, siteKey);
+  return true;
+}
+
+export async function rotateSiteKey(siteKey: string): Promise<SiteConfig | undefined> {
+  await ensureLoaded();
+  const site = sites.get(siteKey);
+  if (!site) return undefined;
+
+  const oldKey = site.siteKey;
+  const rotated: SiteConfig = {
+    ...site,
+    siteKey: generateSiteKey(),
+  };
+
+  sites.delete(oldKey);
+  await deleteJson(SITES_PREFIX, oldKey);
+  await persistSite(rotated);
+  return rotated;
 }
 
 export function getSiteDomains(site: SiteConfig): string[] {
@@ -150,22 +229,19 @@ export function isDomainAllowed(
   origin: string | null
 ): boolean {
   if (!origin) {
-    return (
-      process.env.NODE_ENV === "development" || Boolean(process.env.VERCEL)
-    );
+    return process.env.NODE_ENV === "development" && !process.env.VERCEL;
   }
 
   try {
     const host = new URL(origin).hostname.replace(/^www\./, "");
     const allowed = getSiteDomains(site);
 
-    if (allowed.some((d) => host === d || host.endsWith(`.${d}`))) {
+    if (allowed.some((d) => hostMatchesDomain(host, d))) {
       return true;
     }
 
-    // Autoriser le domaine Bulle lui-même (page démo / tests)
     const bulleHost = getBullePublicHost();
-    if (bulleHost && (host === bulleHost || host.endsWith(`.${bulleHost}`))) {
+    if (bulleHost && hostMatchesDomain(host, bulleHost)) {
       return true;
     }
 
@@ -191,4 +267,21 @@ function getBullePublicHost(): string | null {
   } catch {
     return null;
   }
+}
+
+export function toPublicSiteConfig(site: SiteConfig): SitePublicConfig {
+  return {
+    id: site.id,
+    name: site.name,
+    welcomeMessage: site.welcomeMessage,
+    primaryColor: site.primaryColor,
+    language: site.language,
+  };
+}
+
+export function toAdminSiteView(site: SiteConfig): SiteAdminView {
+  return {
+    ...site,
+    domains: getSiteDomains(site),
+  };
 }

@@ -2,11 +2,6 @@ const MAX_PAGES = parseInt(process.env.BULLE_CRAWL_MAX_PAGES ?? "30", 10);
 const FETCH_TIMEOUT = parseInt(process.env.BULLE_CRAWL_TIMEOUT_MS ?? "8000", 10);
 const USER_AGENT = "BulleBot/1.0 (+https://bulle-chatbot.vercel.app)";
 
-export interface FetchedPage {
-  url: string;
-  html: string;
-}
-
 export async function fetchPage(url: string): Promise<string | null> {
   try {
     const controller = new AbortController();
@@ -78,6 +73,7 @@ export function shouldSkipUrl(url: string): boolean {
   ];
   if (skipExtensions.some((ext) => lower.includes(ext))) return true;
   if (lower.includes("/wp-admin") || lower.includes("/login")) return true;
+  if (/[?&](utm_|fbclid|gclid)/i.test(lower)) return true;
   return false;
 }
 
