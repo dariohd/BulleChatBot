@@ -62,7 +62,7 @@
 
   var config = {
     name: "Bulle",
-    welcomeMessage: "Bonjour, je suis Bulle. Comment puis-je vous aider ?",
+    welcomeMessage: "Bonjour ! Je suis Bulle. Posez-moi une question sur ce site.",
     primaryColor: "#2563eb",
     language: "fr",
     fontFamily:
@@ -231,7 +231,8 @@
       ".bulle-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; background: " +
       messagesBg +
       "; }" +
-      ".bulle-msg { max-width: 85%; padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5; word-wrap: break-word; }" +
+      ".bulle-msg { max-width: 85%; padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5; word-wrap: break-word; animation: bulle-msg-in .25s ease; }" +
+      "@keyframes bulle-msg-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }" +
       ".bulle-msg.user { align-self: flex-end; background: " +
       color +
       "; color: #fff; border-bottom-right-radius: 4px; }" +
@@ -244,7 +245,12 @@
       ".bulle-msg.assistant .bulle-list { margin: 4px 0 8px; padding-left: 18px; }" +
       ".bulle-msg.assistant .bulle-list li { margin: 4px 0; }" +
       ".bulle-msg.assistant strong { font-weight: 600; }" +
-      ".bulle-msg.typing { color: #94a3b8; font-style: italic; }" +
+      ".bulle-msg.typing { color: #94a3b8; font-style: normal; display: flex; align-items: center; gap: 6px; }" +
+      ".bulle-typing-dots { display: inline-flex; gap: 4px; }" +
+      ".bulle-typing-dots span { width: 6px; height: 6px; border-radius: 50%; background: #94a3b8; animation: bulle-dot 1.2s infinite ease-in-out; }" +
+      ".bulle-typing-dots span:nth-child(2) { animation-delay: .15s; }" +
+      ".bulle-typing-dots span:nth-child(3) { animation-delay: .3s; }" +
+      "@keyframes bulle-dot { 0%, 80%, 100% { opacity: .35; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }" +
       ".bulle-input-area { padding: 12px 16px; border-top: 1px solid #e2e8f0; background: " +
       panelBg +
       "; display: flex; gap: 8px; }" +
@@ -296,14 +302,15 @@
   var inputArea = el("div", "bulle-input-area");
   var textarea = el("textarea", "bulle-input");
   textarea.setAttribute("rows", "1");
-  textarea.setAttribute("placeholder", "Posez votre question...");
+  textarea.setAttribute("placeholder", "Votre question…");
+  textarea.setAttribute("aria-label", "Votre message");
   var sendBtn = el("button", "bulle-send");
   sendBtn.innerHTML =
     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>';
   inputArea.appendChild(textarea);
   inputArea.appendChild(sendBtn);
 
-  var powered = el("div", "bulle-powered", "Assistant IA · Propulsé par Bulle");
+  var powered = el("div", "bulle-powered", "Réponses IA · Bulle");
 
   panel.appendChild(header);
   panel.appendChild(messagesEl);
@@ -325,13 +332,22 @@
     }
   }
 
+  messagesEl.setAttribute("aria-live", "polite");
+
+  function createTypingNode() {
+    var node = el("div", "bulle-msg assistant typing");
+    node.innerHTML =
+      '<span>Un instant</span><span class="bulle-typing-dots" aria-hidden="true"><span></span><span></span><span></span></span>';
+    return node;
+  }
+
   function renderMessages() {
     messagesEl.innerHTML = "";
     state.messages.forEach(function (msg) {
       messagesEl.appendChild(el("div", "bulle-msg " + msg.role, formatMessage(msg.content)));
     });
     if (state.loading) {
-      messagesEl.appendChild(el("div", "bulle-msg assistant typing", "Bulle réfléchit..."));
+      messagesEl.appendChild(createTypingNode());
     }
     messagesEl.scrollTop = messagesEl.scrollHeight;
     persistMessages();
@@ -396,6 +412,7 @@
   function togglePanel() {
     state.open = !state.open;
     panel.classList.toggle("open", state.open);
+    toggle.setAttribute("aria-expanded", state.open ? "true" : "false");
     if (state.open && state.messages.length === 0) {
       state.messages.push({
         role: "assistant",
@@ -430,7 +447,9 @@
       .filter(function (m) {
         return !(
           m.role === "assistant" &&
-          m.content.indexOf("Désolé, une erreur est survenue") === 0
+          (m.content.indexOf("Je n'ai pas pu répondre") === 0 ||
+            m.content.indexOf("La limite du jour") === 0 ||
+            m.content.indexOf("Trop de messages") === 0)
         );
       })
       .slice(-12);
@@ -459,6 +478,20 @@
       });
     }
 
+    function friendlyError(err, status) {
+      var message = err && err.message ? String(err.message) : "";
+      if (
+        status === 429 &&
+        (message.indexOf("Quota") !== -1 || message.indexOf("quota") !== -1)
+      ) {
+        return "La limite du jour est atteinte. Revenez demain, ou contactez le propriétaire du site.";
+      }
+      if (status === 429) {
+        return "Trop de messages d'un coup. Attendez une minute et réessayez.";
+      }
+      return "Je n'ai pas pu répondre pour l'instant. Réessayez dans quelques instants.";
+    }
+
     postChat(0)
       .then(function (res) {
         if (!res.ok) {
@@ -468,7 +501,9 @@
               return {};
             })
             .then(function (body) {
-              throw new Error(body.error || "HTTP " + res.status);
+              var err = new Error(body.error || "HTTP " + res.status);
+              err.status = res.status;
+              throw err;
             });
         }
         if (!res.body) throw new Error("Pas de flux");
@@ -517,8 +552,7 @@
         }
         state.messages.push({
           role: "assistant",
-          content:
-            "Désolé, une erreur est survenue. Réessayez dans un instant.",
+          content: friendlyError(err, err.status),
         });
         renderMessages();
       });
@@ -571,7 +605,7 @@
       applyTheme(resolveTheme(data));
       header.querySelector(".bulle-name").textContent = "Bulle";
       header.querySelector(".bulle-subtitle").textContent =
-        "Assistant de " + config.name;
+        "Posez une question sur " + config.name;
     })
     .catch(function () {
       applyTheme(resolveTheme());

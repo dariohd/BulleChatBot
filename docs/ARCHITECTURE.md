@@ -21,7 +21,7 @@ Constantes partagées avec le crawl serveur : `src/lib/page-context.ts`
 ## RAG
 
 1. Crawl (robots.txt, sitemaps imbriqués, liens internes)
-2. Extraction cheerio (`src/lib/crawl/extract.ts`)
+2. Extraction cheerio (`src/lib/crawl/extract.ts`) + JSON-LD / meta Open Graph
 3. Découpage en chunks + embeddings `mistral-embed` si `MISTRAL_API_KEY`
 4. Recherche hybride : cosinus puis mots-clés
 
@@ -34,6 +34,7 @@ Index par couple `siteKey + hostname` dans Vercel Blob (privé). Le statut d'ind
 | Index | `bulle-index/{siteKey}__{host}.json` |
 | Sites | `bulle-sites/{siteKey}.json` |
 | Analytics | `bulle-analytics-events/{siteKey}/{eventId}.json` |
+| Erreurs ops | `bulle-ops-errors/{siteKey}/{eventId}.json` |
 | Conversations | `bulle-conversations/{siteKey}/{sessionId}.json` |
 | Curseur cron | `bulle-cron/reindex.json` |
 
@@ -84,14 +85,14 @@ Si `webhookUrl` est défini sur un site : `chat.started`, `chat.completed`, `ind
 
 ## Limites connues
 
-- Crawl HTML statique uniquement (pas de rendu JavaScript côté client)
+- Crawl HTML statique + métadonnées structurées (JSON-LD, og:). Pas de rendu JavaScript côté client (Puppeteer = coûteux, non prévu).
 - `siteKey` visible dans le DOM du site client (standard widget embarqué)
 - Sans Upstash, le rate limit minute n'est pas partagé entre instances serverless (acceptable à faible trafic)
 
 ## Tests
 
 ```bash
-npm test      # 15 tests unitaires
+npm test      # 18 tests unitaires
 npm run build # build widget + Next.js
 ```
 

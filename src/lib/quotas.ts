@@ -50,3 +50,55 @@ export async function checkSiteQuotas(
 
   return { allowed: true };
 }
+
+export interface SiteAlert {
+  level: "warn" | "critical";
+  code: "quota_chat" | "quota_sync";
+  message: string;
+}
+
+export function buildSiteAlerts(
+  quotas: SiteConfig["quotas"] | null | undefined,
+  chatsToday: number,
+  syncsToday: number
+): SiteAlert[] {
+  const alerts: SiteAlert[] = [];
+
+  const chatMax = quotas?.maxChatsPerDay;
+  if (chatMax && chatMax > 0) {
+    const ratio = chatsToday / chatMax;
+    if (ratio >= 1) {
+      alerts.push({
+        level: "critical",
+        code: "quota_chat",
+        message: `Quota conversations atteint (${chatsToday}/${chatMax} aujourd'hui)`,
+      });
+    } else if (ratio >= 0.8) {
+      alerts.push({
+        level: "warn",
+        code: "quota_chat",
+        message: `Quota conversations bientôt atteint (${chatsToday}/${chatMax})`,
+      });
+    }
+  }
+
+  const syncMax = quotas?.maxSyncsPerDay;
+  if (syncMax && syncMax > 0) {
+    const ratio = syncsToday / syncMax;
+    if (ratio >= 1) {
+      alerts.push({
+        level: "critical",
+        code: "quota_sync",
+        message: `Quota syncs atteint (${syncsToday}/${syncMax} aujourd'hui)`,
+      });
+    } else if (ratio >= 0.8) {
+      alerts.push({
+        level: "warn",
+        code: "quota_sync",
+        message: `Quota syncs bientôt atteint (${syncsToday}/${syncMax})`,
+      });
+    }
+  }
+
+  return alerts;
+}

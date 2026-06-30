@@ -105,7 +105,7 @@ Le widget déclenche automatiquement `/api/index/sync` au premier chargement.
 
 https://bulle-chatbot.vercel.app/admin
 
-Connexion avec `BULLE_ADMIN_SECRET`. Affiche les sites, l'état d'indexation, les jauges de consommation du jour (chats / syncs vs quotas) et les statistiques cumulées.
+Connexion avec `BULLE_ADMIN_SECRET`. Affiche les sites, l'état d'indexation, les jauges de consommation, les alertes quota (80 % / 100 %), les erreurs API récentes et les statistiques cumulées.
 
 ## Commandes utiles
 

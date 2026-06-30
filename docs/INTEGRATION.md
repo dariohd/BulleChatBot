@@ -101,6 +101,6 @@ Via `PATCH /api/sites` (admin) :
 
 ## RGPD
 
-Le widget affiche « Assistant IA · Propulsé par Bulle ». Bulle précise dans ses réponses qu'elles sont générées par intelligence artificielle si le visiteur le demande.
+Le widget affiche « Réponses IA · Bulle ». Bulle précise dans ses réponses qu'elles sont générées par intelligence artificielle si le visiteur le demande.
 
 Les conversations sont consultables et supprimables depuis l'admin (`/api/admin/logs`).

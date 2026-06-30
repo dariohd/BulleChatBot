@@ -7,6 +7,20 @@ interface SiteQuotas {
   maxSyncsPerDay?: number;
 }
 
+interface SiteAlert {
+  level: "warn" | "critical";
+  code: string;
+  message: string;
+}
+
+interface OpsError {
+  route: string;
+  status: number;
+  message: string;
+  timestamp: string;
+  host?: string;
+}
+
 interface SiteOverview {
   id: string;
   name: string;
@@ -30,6 +44,9 @@ interface SiteOverview {
     lastChatAt?: string;
     lastSyncAt?: string;
   };
+  alerts: SiteAlert[];
+  recentErrors: OpsError[];
+  errors24h: number;
 }
 
 interface PlatformInfo {
@@ -38,6 +55,8 @@ interface PlatformInfo {
   syncRateLimitPerHour: number;
   defaultMaxChatsPerDay: number;
   defaultMaxSyncsPerDay: number;
+  alertCount: number;
+  errors24h: number;
 }
 
 interface EditForm {
@@ -411,6 +430,22 @@ export function AdminDashboard() {
             {platform.defaultMaxChatsPerDay} chats / jour ·{" "}
             {platform.defaultMaxSyncsPerDay} syncs / jour
           </p>
+          {(platform.alertCount > 0 || platform.errors24h > 0) && (
+            <div className="mt-4 space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              {platform.alertCount > 0 && (
+                <p>
+                  {platform.alertCount} alerte
+                  {platform.alertCount > 1 ? "s" : ""} quota sur les sites
+                </p>
+              )}
+              {platform.errors24h > 0 && (
+                <p>
+                  {platform.errors24h} erreur
+                  {platform.errors24h > 1 ? "s" : ""} API en 24 h
+                </p>
+              )}
+            </div>
+          )}
         </section>
       )}
 
@@ -573,6 +608,22 @@ export function AdminDashboard() {
               {site.analytics.totalSyncs} syncs
             </p>
             <div className="mt-4 space-y-3">
+              {site.alerts?.length > 0 && (
+                <div className="space-y-2">
+                  {site.alerts.map((alert) => (
+                    <p
+                      key={`${alert.code}-${alert.level}`}
+                      className={`rounded-lg px-3 py-2 text-xs ${
+                        alert.level === "critical"
+                          ? "bg-red-50 text-red-800"
+                          : "bg-amber-50 text-amber-900"
+                      }`}
+                    >
+                      {alert.message}
+                    </p>
+                  ))}
+                </div>
+              )}
               <UsageGauge
                 label="Conversations"
                 used={site.analytics.chatsToday}
@@ -588,6 +639,25 @@ export function AdminDashboard() {
               Dernier chat : {formatWhen(site.analytics.lastChatAt)} · Dernier
               sync : {formatWhen(site.analytics.lastSyncAt)}
             </p>
+            {site.recentErrors?.length > 0 && (
+              <details className="mt-3 rounded-lg border border-[var(--border)] p-3 text-xs">
+                <summary className="cursor-pointer text-[var(--muted)]">
+                  {site.errors24h} erreur{site.errors24h > 1 ? "s" : ""} récente
+                  {site.errors24h > 1 ? "s" : ""} (24 h)
+                </summary>
+                <ul className="mt-2 space-y-2">
+                  {site.recentErrors.map((err) => (
+                    <li key={`${err.timestamp}-${err.route}`} className="text-[var(--muted)]">
+                      <span className="font-medium text-slate-700">
+                        {formatWhen(err.timestamp)}
+                      </span>
+                      {" · "}
+                      {err.route} · HTTP {err.status} · {err.message}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
             <div className="mt-4 flex flex-wrap gap-2">
               <button
                 onClick={() => openEdit(site)}

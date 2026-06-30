@@ -47,7 +47,8 @@ export async function crawlSite(baseUrl: string): Promise<CrawlResult> {
         if (!html) return;
 
         const page = extractPageContent(url, html);
-        if (!page.content || page.content.length < 40) return;
+        const minContentLength = page.hasStructuredData ? 20 : 40;
+        if (!page.content || page.content.length < minContentLength) return;
 
         if (!siteName && url === normalizedBase) {
           siteName = page.title;

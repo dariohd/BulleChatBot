@@ -2,7 +2,8 @@ import { getAnalyticsSummary } from "@/lib/analytics";
 import { requireAdmin } from "@/lib/auth";
 import { LIMITS } from "@/lib/env";
 import { getIndexStatus } from "@/lib/index/service";
-import { getSiteUsageToday } from "@/lib/quotas";
+import { getOpsErrorsSummary } from "@/lib/ops-errors";
+import { buildSiteAlerts, getSiteUsageToday } from "@/lib/quotas";
 import { hasDistributedRateLimit } from "@/lib/rate-limit";
 import { listSites } from "@/lib/sites";
 
@@ -11,13 +12,18 @@ export async function GET(req: Request) {
   if (denied) return denied;
 
   const sites = await listSites();
-  const analytics = await getAnalyticsSummary(sites.map((s) => s.siteKey));
+  const siteKeys = sites.map((site) => site.siteKey);
+  const analytics = await getAnalyticsSummary(siteKeys);
+  const opsSummary = await getOpsErrorsSummary(siteKeys, 5);
 
   const overview = await Promise.all(
     sites.map(async (site) => {
       const status = await getIndexStatus(site.siteKey, site.baseUrl);
       const stats = analytics.find((a) => a.siteKey === site.siteKey);
       const today = await getSiteUsageToday(site.siteKey);
+      const ops = opsSummary.find((item) => item.siteKey === site.siteKey);
+      const alerts = buildSiteAlerts(site.quotas, today.chatsToday, today.syncsToday);
+
       return {
         id: site.id,
         name: site.name,
@@ -34,8 +40,20 @@ export async function GET(req: Request) {
           lastChatAt: stats?.lastChatAt,
           lastSyncAt: stats?.lastSyncAt,
         },
+        alerts,
+        recentErrors: ops?.errors ?? [],
+        errors24h: ops?.errorCount24h ?? 0,
       };
     })
+  );
+
+  const alertCount = overview.reduce(
+    (count, site) => count + site.alerts.length,
+    0
+  );
+  const errors24h = overview.reduce(
+    (count, site) => count + site.errors24h,
+    0
   );
 
   return Response.json({
@@ -46,6 +64,8 @@ export async function GET(req: Request) {
       syncRateLimitPerHour: LIMITS.syncRateLimit,
       defaultMaxChatsPerDay: LIMITS.defaultMaxChatsPerDay,
       defaultMaxSyncsPerDay: LIMITS.defaultMaxSyncsPerDay,
+      alertCount,
+      errors24h,
     },
   });
 }

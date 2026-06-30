@@ -1,6 +1,7 @@
 import { trackIndexSync } from "@/lib/analytics";
 import { getIndexStatus, indexSite } from "@/lib/index/service";
 import { extractHost } from "@/lib/index/store";
+import { trackOpsError } from "@/lib/ops-errors";
 import { checkSiteQuotas } from "@/lib/quotas";
 import {
   jsonWithCors,
@@ -30,6 +31,7 @@ export async function OPTIONS(req: Request) {
 
 export async function POST(req: Request) {
   const origin = req.headers.get("origin");
+  let siteKey = "";
 
   try {
     const raw = await req.json();
@@ -41,7 +43,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const siteKey =
+    siteKey =
       parsed.data.siteKey ?? req.headers.get("x-bulle-site-key") ?? "";
 
     if (!siteKey) {
@@ -74,6 +76,12 @@ export async function POST(req: Request) {
 
     const quota = await checkSiteQuotas(site, "sync");
     if (!quota.allowed) {
+      void trackOpsError(siteKey, {
+        route: "index_sync",
+        status: 429,
+        message: quota.reason ?? "Quota journalier",
+        host: extractHost(crawlOrigin ?? origin ?? "") ?? undefined,
+      });
       return jsonWithCors(
         { error: quota.reason ?? "Quota atteint" },
         { status: 429, origin, allowed: true }
@@ -117,6 +125,15 @@ export async function POST(req: Request) {
     );
   } catch (error) {
     console.error("[Bulle index/sync]", error);
+    if (siteKey) {
+      void trackOpsError(siteKey, {
+        route: "index_sync",
+        status: 500,
+        message:
+          error instanceof Error ? error.message : "Erreur indexation inconnue",
+        host: extractHost(origin ?? "") ?? undefined,
+      });
+    }
     return jsonWithCors(
       {
         error:

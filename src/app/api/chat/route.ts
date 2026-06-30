@@ -14,6 +14,7 @@ import {
   searchSiteKnowledge,
 } from "@/lib/index/service";
 import { extractHost } from "@/lib/index/store";
+import { trackOpsError } from "@/lib/ops-errors";
 import { checkSiteQuotas } from "@/lib/quotas";
 import {
   checkChatRateLimit,
@@ -38,6 +39,7 @@ export async function OPTIONS(req: Request) {
 
 export async function POST(req: Request) {
   const origin = req.headers.get("origin");
+  let siteKey = "";
 
   try {
     const raw = await req.json();
@@ -49,7 +51,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const siteKey =
+    siteKey =
       parsed.data.siteKey ?? req.headers.get("x-bulle-site-key") ?? "";
     const { pageContext, messages, sessionId } = parsed.data;
 
@@ -78,11 +80,23 @@ export async function POST(req: Request) {
     const clientId = getRequestClientId(req, siteKey);
     const rateLimit = await checkChatRateLimit(clientId);
     if (!rateLimit.allowed) {
+      void trackOpsError(siteKey, {
+        route: "chat",
+        status: 429,
+        message: "Rate limit minute",
+        host: extractHost(pageContext?.url ?? origin ?? "") ?? undefined,
+      });
       return rateLimitResponse(origin, rateLimit.retryAfterSec ?? 60, true);
     }
 
     const quota = await checkSiteQuotas(site, "chat");
     if (!quota.allowed) {
+      void trackOpsError(siteKey, {
+        route: "chat",
+        status: 429,
+        message: quota.reason ?? "Quota journalier",
+        host: extractHost(pageContext?.url ?? origin ?? "") ?? undefined,
+      });
       return jsonWithCors(
         { error: quota.reason ?? "Quota atteint" },
         { status: 429, origin, allowed: true }
@@ -181,6 +195,15 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("[Bulle chat]", error);
+    if (siteKey) {
+      void trackOpsError(siteKey, {
+        route: "chat",
+        status: 500,
+        message:
+          error instanceof Error ? error.message : "Erreur chat inconnue",
+        host: extractHost(origin ?? "") ?? undefined,
+      });
+    }
     return jsonWithCors(
       { error: "Erreur lors du traitement de la conversation" },
       { status: 500, origin, allowed: Boolean(origin) }
