@@ -337,19 +337,80 @@
     }
   }
 
-  function defaultSuggestions() {
-    return [
-      "Que propose ce site ?",
-      "Comment vous contacter ?",
-      "Résumez le site en bref",
-    ];
+  function collectPageHeadings() {
+    return Array.from(document.querySelectorAll("h1, h2, h3"))
+      .filter(function (el) {
+        return !el.closest(".bulle-widget-root");
+      })
+      .map(function (el) {
+        return (el.textContent || "").replace(/\s+/g, " ").trim();
+      })
+      .filter(function (text) {
+        return text.length > 0;
+      });
+  }
+
+  function headingToQuestion(heading) {
+    var topic = heading.replace(/\s+/g, " ").trim();
+    if (topic.length < 2 || topic.length > 80) return null;
+
+    var lower = topic.toLowerCase();
+    if (/contact|nous écrire|écrivez|joindre|prendre rendez-vous/i.test(lower)) {
+      return "Comment vous contacter ?";
+    }
+    if (/à propos|a propos|about|qui suis|présentation|presentation|parcours/i.test(lower)) {
+      return "Parlez-moi de ce site en bref.";
+    }
+    if (/projets?|portfolio|réalisations|realisations|works|galerie/i.test(lower)) {
+      return "Quels projets sont présentés ici ?";
+    }
+    if (/services?|prestations|offres|tarifs|solutions/i.test(lower)) {
+      return "Quels services sont proposés ?";
+    }
+    if (/stack|techno|compétences|competences|skills/i.test(lower)) {
+      return "Quelles technologies sont utilisées ?";
+    }
+
+    var clean = topic.replace(/[?:!.…]+$/g, "").trim();
+    if (clean.length < 4) return null;
+    return "En savoir plus sur « " + clean + " » ?";
+  }
+
+  function derivePageSuggestions() {
+    var seen = {};
+    var result = [];
+
+    function push(question) {
+      if (!question) return;
+      var key = question.toLowerCase();
+      if (seen[key]) return;
+      seen[key] = true;
+      result.push(question);
+    }
+
+    collectPageHeadings().forEach(function (heading) {
+      if (result.length >= 3) return;
+      push(headingToQuestion(heading));
+    });
+
+    if (result.length < 3 && config.name) {
+      push("Que propose " + config.name + " ?");
+    }
+    if (result.length < 3) {
+      push("Résumez ce site en quelques mots.");
+    }
+    if (result.length < 3) {
+      push("Comment vous contacter ?");
+    }
+
+    return result.slice(0, 3);
   }
 
   function activeSuggestions() {
     if (config.suggestions && config.suggestions.length) {
       return config.suggestions.slice(0, 3);
     }
-    return defaultSuggestions();
+    return derivePageSuggestions();
   }
 
   function hasUserMessage() {
