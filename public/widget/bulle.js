@@ -239,6 +239,11 @@
       panelBg +
       "; color: #1e293b; border: 1px solid #e2e8f0; border-bottom-left-radius: 4px; }" +
       ".bulle-msg.assistant a { color: " + color + "; text-decoration: underline; word-break: break-all; }" +
+      ".bulle-msg.assistant p { margin: 0 0 8px; }" +
+      ".bulle-msg.assistant p:last-child { margin-bottom: 0; }" +
+      ".bulle-msg.assistant .bulle-list { margin: 4px 0 8px; padding-left: 18px; }" +
+      ".bulle-msg.assistant .bulle-list li { margin: 4px 0; }" +
+      ".bulle-msg.assistant strong { font-weight: 600; }" +
       ".bulle-msg.typing { color: #94a3b8; font-style: italic; }" +
       ".bulle-input-area { padding: 12px 16px; border-top: 1px solid #e2e8f0; background: " +
       panelBg +
@@ -338,17 +343,54 @@
     return d.innerHTML;
   }
 
-  function formatMessage(text) {
-    var escaped = escapeHtml(text).replace(/\n/g, "<br>");
-    escaped = escaped.replace(
+  function inlineFormat(text) {
+    var s = escapeHtml(text);
+    s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    s = s.replace(/__([^_]+)__/g, "<strong>$1</strong>");
+    s = s.replace(
       /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
       '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
     );
-    escaped = escaped.replace(
+    s = s.replace(
       /(^|[\s(])((https?:\/\/)[^\s<)]+)/g,
       '$1<a href="$2" target="_blank" rel="noopener noreferrer">$2</a>'
     );
-    return escaped;
+    return s;
+  }
+
+  function formatMessage(text) {
+    var lines = String(text).split("\n");
+    var parts = [];
+    var inList = false;
+
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      var bullet = line.match(/^\s*[-*]\s+(.+)$/);
+
+      if (bullet) {
+        if (!inList) {
+          parts.push('<ul class="bulle-list">');
+          inList = true;
+        }
+        parts.push("<li>" + inlineFormat(bullet[1]) + "</li>");
+        continue;
+      }
+
+      if (inList) {
+        parts.push("</ul>");
+        inList = false;
+      }
+
+      if (line.trim()) {
+        parts.push("<p>" + inlineFormat(line) + "</p>");
+      }
+    }
+
+    if (inList) {
+      parts.push("</ul>");
+    }
+
+    return parts.join("");
   }
 
   function togglePanel() {
