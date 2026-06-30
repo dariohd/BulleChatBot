@@ -270,23 +270,24 @@
     }
 
     css +=
-      ":host { display: block; }" +
-      ".bulle-root { position: fixed; bottom: 24px; right: 24px; z-index: 2147483646; width: 380px; max-width: calc(100vw - 32px); display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 10px; pointer-events: none; }" +
-      ".bulle-toggle { pointer-events: auto; position: relative; z-index: 2; width: 76px; height: 76px; padding: 0; border: none; background: transparent; cursor: pointer; display: flex; align-items: flex-end; justify-content: center; filter: drop-shadow(0 10px 24px rgba(0,0,0,.18)); transition: transform .2s ease; }" +
-      ".bulle-toggle:hover { transform: translateY(-3px) scale(1.04); }" +
-      ".bulle-toggle .bulle-mascot { display: block; width: 76px; height: 76px; object-fit: contain; pointer-events: none; }" +
+      ":host { display: block; position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; }" +
+      ".bulle-root { pointer-events: none; }" +
+      ".bulle-toggle { pointer-events: auto; position: fixed; bottom: 24px; right: 24px; z-index: 2147483647; padding: 0; border: none; background: transparent; cursor: pointer; transition: transform .2s ease; }" +
+      ".bulle-toggle:hover { transform: translateY(-3px); }" +
+      ".bulle-toggle:focus-visible { outline: 2px solid var(--bulle-accent); outline-offset: 4px; border-radius: 22px; }" +
+      ".bulle-toggle-bubble { position: relative; display: flex; align-items: center; justify-content: center; width: 76px; height: 68px; background: var(--bulle-panel); border: 2px solid var(--bulle-bubble-ring); border-radius: 22px 22px 22px 8px; box-shadow: 0 12px 32px rgba(15,23,42,.18); }" +
+      ".bulle-toggle-bubble::after { content: \"\"; position: absolute; bottom: -8px; right: 14px; width: 14px; height: 14px; background: var(--bulle-panel); border-right: 2px solid var(--bulle-bubble-ring); border-bottom: 2px solid var(--bulle-bubble-ring); transform: rotate(45deg); pointer-events: none; }" +
+      ".bulle-toggle .bulle-mascot { display: block; width: 46px; height: 46px; object-fit: contain; pointer-events: none; }" +
       ".bulle-root.bulle-open .bulle-toggle { display: none; }" +
-      ".bulle-panel-shell { pointer-events: none; visibility: hidden; width: 100%; max-height: 0; overflow: hidden; opacity: 0; transform: translateY(10px); transition: opacity .22s ease, transform .22s ease, max-height .22s ease; }" +
+      ".bulle-panel-shell { pointer-events: none; position: fixed; bottom: 24px; right: 24px; z-index: 2147483647; width: 380px; max-width: calc(100vw - 32px); visibility: hidden; max-height: 0; overflow: hidden; opacity: 0; transform: translateY(10px); transition: opacity .22s ease, transform .22s ease, max-height .22s ease, visibility .22s ease; }" +
       ".bulle-root.bulle-open .bulle-panel-shell { pointer-events: auto; visibility: visible; max-height: min(560px, calc(100vh - 100px)); opacity: 1; transform: translateY(0); overflow: visible; }" +
-      ".bulle-panel { position: relative; background: var(--bulle-panel); border-radius: 24px; border: 2px solid var(--bulle-bubble-ring); display: flex; flex-direction: column; overflow: hidden; max-height: min(520px, calc(100vh - 120px)); box-shadow: 0 20px 50px rgba(0,0,0,.16); }" +
+      ".bulle-panel { pointer-events: auto; position: relative; z-index: 1; background: var(--bulle-panel); border-radius: 24px; border: 2px solid var(--bulle-bubble-ring); display: flex; flex-direction: column; overflow: hidden; max-height: min(520px, calc(100vh - 120px)); box-shadow: 0 20px 50px rgba(0,0,0,.16); cursor: default; }" +
       ".bulle-panel::after { content: \"\"; position: absolute; bottom: -9px; right: 30px; width: 18px; height: 18px; background: var(--bulle-panel); border-right: 2px solid var(--bulle-bubble-ring); border-bottom: 2px solid var(--bulle-bubble-ring); transform: rotate(45deg); pointer-events: none; }" +
-      ".bulle-header { padding: 14px 18px; background: linear-gradient(135deg, var(--bulle-accent), color-mix(in srgb, var(--bulle-accent) 72%, #6366f1)); color: #fff; display: flex; align-items: center; gap: 12px; }" +
-      ".bulle-avatar { width: 48px; height: 48px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }" +
-      ".bulle-avatar .bulle-mascot { width: 48px; height: 48px; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(0,0,0,.15)); }" +
-      ".bulle-header-text h3 { margin: 0; font-size: 15px; font-weight: 600; }" +
-      ".bulle-header-text p { margin: 2px 0 0; font-size: 12px; opacity: .9; }" +
-      ".bulle-close { margin-left: auto; background: rgba(255,255,255,.15); border: none; color: #fff; cursor: pointer; padding: 6px; border-radius: 8px; display: flex; align-items: center; justify-content: center; pointer-events: auto; }" +
-      ".bulle-close:hover { background: rgba(255,255,255,.28); }" +
+      ".bulle-header { padding: 12px 14px 10px; background: var(--bulle-panel); border-bottom: 1px solid var(--bulle-border); display: flex; align-items: center; gap: 10px; pointer-events: auto; }" +
+      ".bulle-avatar { width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }" +
+      ".bulle-avatar .bulle-mascot { width: 44px; height: 44px; object-fit: contain; }" +
+      ".bulle-close { margin-left: auto; background: var(--bulle-messages); border: 1px solid var(--bulle-border); color: var(--bulle-muted); cursor: pointer; padding: 6px; border-radius: 8px; display: flex; align-items: center; justify-content: center; pointer-events: auto; }" +
+      ".bulle-close:hover { color: var(--bulle-text); border-color: var(--bulle-accent); }" +
       ".bulle-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; background: var(--bulle-messages); min-height: 180px; pointer-events: auto; }" +
       ".bulle-msg { max-width: 88%; padding: 10px 14px; font-size: 14px; line-height: 1.5; word-wrap: break-word; animation: bulle-msg-in .25s ease; }" +
       "@keyframes bulle-msg-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }" +
@@ -319,7 +320,7 @@
       ".bulle-powered strong { color: var(--bulle-accent); font-weight: 600; }" +
       ".bulle-toggle:focus-visible, .bulle-send:focus-visible, .bulle-close:focus-visible, .bulle-suggestion:focus-visible { outline: 2px solid var(--bulle-accent); outline-offset: 2px; }" +
       "@media (prefers-reduced-motion: reduce) { .bulle-msg, .bulle-panel-shell, .bulle-toggle { animation: none !important; transition: none !important; } .bulle-typing-dots span { animation: none !important; opacity: .6; } }" +
-      "@media (max-width: 480px) { .bulle-root { width: calc(100vw - 16px); right: 16px; bottom: 16px; } }";
+      "@media (max-width: 480px) { .bulle-panel-shell, .bulle-toggle { right: 16px; bottom: 16px; width: calc(100vw - 32px); } }";
 
     return css;
   }
@@ -333,7 +334,8 @@
 
   var host = el("div");
   host.className = "bulle-widget-root";
-  host.style.pointerEvents = "none";
+  host.style.cssText =
+    "position:fixed;inset:0;z-index:2147483647;pointer-events:none;";
   document.body.appendChild(host);
 
   var shadow = host.attachShadow({ mode: "open" });
@@ -348,9 +350,8 @@
   var header = el("div", "bulle-header");
   header.innerHTML =
     '<div class="bulle-avatar">' +
-    mascotMark(48) +
+    mascotMark(44) +
     '</div>' +
-    '<div class="bulle-header-text"><h3 class="bulle-name">Bulle</h3><p class="bulle-subtitle">Assistant du site</p></div>' +
     '<button type="button" class="bulle-close" aria-label="Fermer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>';
 
   var messagesEl = el("div", "bulle-messages");
@@ -386,7 +387,8 @@
   toggle.setAttribute("type", "button");
   toggle.setAttribute("aria-label", "Ouvrir le chat Bulle");
   toggle.setAttribute("aria-expanded", "false");
-  toggle.innerHTML = mascotMark(76, "bulle-mascot-toggle");
+  toggle.innerHTML =
+    '<span class="bulle-toggle-bubble">' + mascotMark(46) + "</span>";
   root.appendChild(toggle);
 
   function persistMessages() {
@@ -776,9 +778,6 @@
       config.language = data.language || config.language;
 
       applyTheme(resolveTheme(data));
-      header.querySelector(".bulle-name").textContent = "Bulle";
-      header.querySelector(".bulle-subtitle").textContent =
-        "Posez une question sur " + config.name;
       renderSuggestions();
     })
     .catch(function () {
