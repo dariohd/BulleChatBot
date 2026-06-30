@@ -246,35 +246,28 @@
     };
   }
 
-  function mascotAssetUrl(file) {
-    var url;
-    try {
-      var base = new URL(script.src);
-      base.pathname = base.pathname.replace(/\/[^/]+$/, "/" + file);
-      base.search = "";
-      url = base.href;
-    } catch (e) {
-      url = "https://bulle-chatbot.vercel.app/widget/" + file;
-    }
-    return (
-      url +
-      (url.indexOf("?") === -1 ? "?" : "&") +
-      "v=" +
-      encodeURIComponent(BULLE_WIDGET_VERSION)
-    );
-  }
-
   function mascotMark(size, extraClass) {
     return (
-      '<img class="bulle-mascot' +
+      '<svg class="bulle-mascot' +
       (extraClass ? " " + extraClass : "") +
-      '" src="' +
-      mascotAssetUrl("bulle-mascot.svg") +
       '" width="' +
       size +
       '" height="' +
       size +
-      '" alt="" decoding="async" draggable="false" />'
+      '" viewBox="10 8 80 80" aria-hidden="true" focusable="false">' +
+      '<circle cx="50" cy="48" r="33" fill="var(--bulle-mascot-body)"/>' +
+      '<circle cx="50" cy="48" r="33" fill="none" stroke="var(--bulle-mascot-rim)" stroke-width="1.2" opacity=".5"/>' +
+      '<ellipse cx="36" cy="31" rx="11" ry="6.5" fill="#fff" opacity=".82" transform="rotate(-22 36 31)"/>' +
+      '<circle cx="30" cy="41" r="3.2" fill="#fff" opacity=".72"/>' +
+      '<circle cx="38" cy="46" r="11.5" fill="none" stroke="#1a1a1a" stroke-width="3.4"/>' +
+      '<circle cx="62" cy="46" r="11.5" fill="none" stroke="#1a1a1a" stroke-width="3.4"/>' +
+      '<path d="M49.5 46 H50.5" stroke="#1a1a1a" stroke-width="3.2" stroke-linecap="round"/>' +
+      '<circle cx="38" cy="46" r="5.2" fill="#1a1a1a"/>' +
+      '<circle cx="62" cy="46" r="5.2" fill="#1a1a1a"/>' +
+      '<circle cx="40" cy="44" r="1.9" fill="#fff"/>' +
+      '<circle cx="64" cy="44" r="1.9" fill="#fff"/>' +
+      '<path d="M42 59 Q50 63 58 59" fill="none" stroke="#1a1a1a" stroke-width="1.8" stroke-linecap="round"/>' +
+      "</svg>"
     );
   }
 
@@ -308,7 +301,11 @@
       color +
       " 18%, #e2e8f0); --bulle-bubble-ring: color-mix(in srgb, " +
       color +
-      " 35%, transparent); }";
+      " 35%, transparent); --bulle-mascot-body: color-mix(in srgb, " +
+      color +
+      " 40%, #ffffff); --bulle-mascot-rim: color-mix(in srgb, " +
+      color +
+      " 65%, #0f172a); }";
 
     if (useDark) {
       css +=
@@ -325,7 +322,7 @@
       ".bulle-toggle:focus-visible { outline: 2px solid var(--bulle-accent); outline-offset: 4px; border-radius: 22px; }" +
       ".bulle-toggle-bubble { position: relative; display: flex; align-items: center; justify-content: center; width: 76px; height: 68px; background: var(--bulle-panel); border: 2px solid var(--bulle-bubble-ring); border-radius: 22px 22px 22px 8px; box-shadow: 0 12px 32px rgba(15,23,42,.18); }" +
       ".bulle-toggle-bubble::after { content: \"\"; position: absolute; bottom: -8px; right: 14px; width: 14px; height: 14px; background: var(--bulle-panel); border-right: 2px solid var(--bulle-bubble-ring); border-bottom: 2px solid var(--bulle-bubble-ring); transform: rotate(45deg); pointer-events: none; }" +
-      ".bulle-toggle .bulle-mascot { display: block; width: 46px; height: 46px; object-fit: contain; pointer-events: none; }" +
+      ".bulle-toggle .bulle-mascot { display: block; width: 46px; height: 46px; pointer-events: none; }" +
       ".bulle-root.bulle-open .bulle-toggle { display: none; }" +
       ".bulle-panel-shell { pointer-events: none; position: fixed; bottom: 24px; right: 24px; z-index: 2147483647; width: 380px; max-width: calc(100vw - 32px); visibility: hidden; max-height: 0; overflow: hidden; opacity: 0; transform: translateY(10px); transition: opacity .22s ease, transform .22s ease, max-height .22s ease, visibility .22s ease; }" +
       ".bulle-root.bulle-open .bulle-panel-shell { pointer-events: auto; visibility: visible; max-height: min(560px, calc(100vh - 100px)); opacity: 1; transform: translateY(0); overflow: visible; }" +
@@ -333,7 +330,7 @@
       ".bulle-panel::after { content: \"\"; position: absolute; bottom: -9px; right: 30px; width: 18px; height: 18px; background: var(--bulle-panel); border-right: 2px solid var(--bulle-bubble-ring); border-bottom: 2px solid var(--bulle-bubble-ring); transform: rotate(45deg); pointer-events: none; }" +
       ".bulle-header { padding: 12px 14px 10px; background: var(--bulle-panel); border-bottom: 1px solid var(--bulle-border); display: flex; align-items: center; gap: 10px; pointer-events: auto; }" +
       ".bulle-avatar { width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }" +
-      ".bulle-avatar .bulle-mascot { width: 44px; height: 44px; object-fit: contain; }" +
+      ".bulle-avatar .bulle-mascot { width: 44px; height: 44px; }" +
       ".bulle-close { margin-left: auto; background: var(--bulle-messages); border: 1px solid var(--bulle-border); color: var(--bulle-muted); cursor: pointer; padding: 6px; border-radius: 8px; display: flex; align-items: center; justify-content: center; pointer-events: auto; }" +
       ".bulle-close:hover { color: var(--bulle-text); border-color: var(--bulle-accent); }" +
       ".bulle-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; background: var(--bulle-messages); min-height: 180px; pointer-events: auto; }" +
@@ -364,7 +361,7 @@
       ".bulle-send { width: 40px; height: 40px; border-radius: 50%; border: none; background: var(--bulle-accent); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; pointer-events: auto; }" +
       ".bulle-send:disabled { opacity: .5; cursor: not-allowed; }" +
       ".bulle-powered { padding: 6px; font-size: 10px; color: var(--bulle-muted); background: var(--bulle-panel); display: flex; align-items: center; justify-content: center; gap: 6px; pointer-events: none; }" +
-      ".bulle-powered .bulle-mascot { width: 18px; height: 18px; object-fit: contain; }" +
+      ".bulle-powered .bulle-mascot { width: 18px; height: 18px; }" +
       ".bulle-powered strong { color: var(--bulle-accent); font-weight: 600; }" +
       ".bulle-toggle:focus-visible, .bulle-send:focus-visible, .bulle-close:focus-visible, .bulle-suggestion:focus-visible { outline: 2px solid var(--bulle-accent); outline-offset: 2px; }" +
       "@media (prefers-reduced-motion: reduce) { .bulle-msg, .bulle-panel-shell, .bulle-toggle { animation: none !important; transition: none !important; } .bulle-typing-dots span { animation: none !important; opacity: .6; } }" +

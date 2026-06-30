@@ -40,6 +40,6 @@
       throw new Error("manifest invalid");
     })
     .catch(function () {
-      inject("bulle.v030.js", "0.3.0");
+      inject("bulle.v031.js", "0.3.1");
     });
 })();
