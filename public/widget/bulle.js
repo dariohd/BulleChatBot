@@ -210,22 +210,22 @@
     };
   }
 
-  function mascotAssetUrl() {
+  function mascotAssetUrl(file) {
     try {
       var base = new URL(script.src);
-      base.pathname = base.pathname.replace(/\/[^/]+$/, "/bulle-mascot.png");
+      base.pathname = base.pathname.replace(/\/[^/]+$/, "/" + file);
       return base.href;
     } catch (e) {
-      return "https://bulle-chatbot.vercel.app/widget/bulle-mascot.png";
+      return "https://bulle-chatbot.vercel.app/widget/" + file;
     }
   }
 
-  function mascotImg(size, extraClass) {
+  function mascotMark(size, extraClass) {
     return (
       '<img class="bulle-mascot' +
       (extraClass ? " " + extraClass : "") +
       '" src="' +
-      mascotAssetUrl() +
+      mascotAssetUrl("bulle-mascot.svg") +
       '" width="' +
       size +
       '" height="' +
@@ -274,7 +274,7 @@
       ".bulle-root { position: fixed; bottom: 24px; right: 24px; z-index: 2147483646; width: 380px; max-width: calc(100vw - 32px); display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 10px; pointer-events: none; }" +
       ".bulle-toggle { pointer-events: auto; position: relative; z-index: 2; width: 76px; height: 76px; padding: 0; border: none; background: transparent; cursor: pointer; display: flex; align-items: flex-end; justify-content: center; filter: drop-shadow(0 10px 24px rgba(0,0,0,.18)); transition: transform .2s ease; }" +
       ".bulle-toggle:hover { transform: translateY(-3px) scale(1.04); }" +
-      ".bulle-toggle .bulle-mascot { width: 76px; height: 76px; object-fit: contain; pointer-events: none; }" +
+      ".bulle-toggle .bulle-mascot { display: block; width: 76px; height: 76px; object-fit: contain; pointer-events: none; }" +
       ".bulle-root.bulle-open .bulle-toggle { display: none; }" +
       ".bulle-panel-shell { pointer-events: none; visibility: hidden; width: 100%; max-height: 0; overflow: hidden; opacity: 0; transform: translateY(10px); transition: opacity .22s ease, transform .22s ease, max-height .22s ease; }" +
       ".bulle-root.bulle-open .bulle-panel-shell { pointer-events: auto; visibility: visible; max-height: min(560px, calc(100vh - 100px)); opacity: 1; transform: translateY(0); overflow: visible; }" +
@@ -348,7 +348,7 @@
   var header = el("div", "bulle-header");
   header.innerHTML =
     '<div class="bulle-avatar">' +
-    mascotImg(48) +
+    mascotMark(48) +
     '</div>' +
     '<div class="bulle-header-text"><h3 class="bulle-name">Bulle</h3><p class="bulle-subtitle">Assistant du site</p></div>' +
     '<button type="button" class="bulle-close" aria-label="Fermer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>';
@@ -372,7 +372,7 @@
 
   var powered = el("div", "bulle-powered");
   powered.innerHTML =
-    mascotImg(18) + "<span>Réponses IA · <strong>Bulle</strong></span>";
+    mascotMark(18) + "<span>Réponses IA · <strong>Bulle</strong></span>";
 
   panel.appendChild(header);
   panel.appendChild(messagesEl);
@@ -386,7 +386,7 @@
   toggle.setAttribute("type", "button");
   toggle.setAttribute("aria-label", "Ouvrir le chat Bulle");
   toggle.setAttribute("aria-expanded", "false");
-  toggle.innerHTML = mascotImg(76, "bulle-mascot-toggle");
+  toggle.innerHTML = mascotMark(76, "bulle-mascot-toggle");
   root.appendChild(toggle);
 
   function persistMessages() {
