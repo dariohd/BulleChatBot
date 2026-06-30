@@ -119,12 +119,34 @@
     }
   }
 
+  function firstHostColor(varNames) {
+    for (var i = 0; i < varNames.length; i++) {
+      var hex = cssColorToHex(readHostCssVar(varNames[i]));
+      if (hex) return hex;
+    }
+    return null;
+  }
+
+  function readBodyBackground() {
+    try {
+      return cssColorToHex(getComputedStyle(document.body).backgroundColor);
+    } catch (e) {
+      return null;
+    }
+  }
+
   function resolveTheme(apiData) {
     var color =
       (apiData && apiData.primaryColor) ||
       script.getAttribute("data-primary-color") ||
-      cssColorToHex(readHostCssVar("--accent")) ||
-      cssColorToHex(readHostCssVar("--primary-color")) ||
+      firstHostColor([
+        "--accent",
+        "--accent-deep",
+        "--primary-color",
+        "--primary",
+        "--brand",
+        "--color-primary",
+      ]) ||
       config.primaryColor;
     var fontFamily =
       script.getAttribute("data-font-family") ||
@@ -132,13 +154,25 @@
       config.fontFamily;
     var panelBg =
       script.getAttribute("data-panel-bg") ||
-      cssColorToHex(readHostCssVar("--bg-elevated")) ||
-      cssColorToHex(readHostCssVar("--surface")) ||
+      firstHostColor(["--bg-card", "--bg-elevated", "--surface", "--card-bg"]) ||
       config.panelBg;
     var messagesBg =
       script.getAttribute("data-messages-bg") ||
-      cssColorToHex(readHostCssVar("--bg")) ||
+      firstHostColor(["--bg-mid", "--bg", "--background"]) ||
+      readBodyBackground() ||
       config.messagesBg;
+
+    var bodyBg = readBodyBackground();
+    if (
+      !script.getAttribute("data-panel-bg") &&
+      bodyBg &&
+      isColorDark(bodyBg) &&
+      !isColorDark(panelBg)
+    ) {
+      panelBg = "#1e293b";
+      messagesBg = "#0f172a";
+    }
+
     return {
       primaryColor: color,
       fontFamily: fontFamily,
@@ -250,7 +284,11 @@
     var panelBg = theme.panelBg || config.panelBg;
     var messagesBg = theme.messagesBg || config.messagesBg;
     var themeMode = script.getAttribute("data-theme");
-    var hostDark = isColorDark(panelBg) || isColorDark(messagesBg);
+    var bodyBg = readBodyBackground();
+    var hostDark =
+      isColorDark(panelBg) ||
+      isColorDark(messagesBg) ||
+      (bodyBg && isColorDark(bodyBg));
     var useDark =
       themeMode === "dark" ||
       (themeMode !== "light" && hostDark);

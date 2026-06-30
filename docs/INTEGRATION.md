@@ -94,7 +94,7 @@ Via `PATCH /api/sites` (admin) :
 
 - `welcomeMessage` : message d'accueil
 - `suggestions` : jusqu'à 3 questions rapides (optionnel ; sinon générées depuis les titres de la page)
-- `primaryColor` : couleur de la bulle
+- `primaryColor` : couleur d'accent du widget (boutons, bulles utilisateur, liens). **Une valeur par site** dans l'admin.
 - `tone` : ton des réponses
 - `instructions` : consignes additionnelles
 - `quotas.maxChatsPerDay` : quota conversations / jour
@@ -105,3 +105,13 @@ Via `PATCH /api/sites` (admin) :
 Le widget affiche « Réponses IA · Bulle ». Bulle précise dans ses réponses qu'elles sont générées par intelligence artificielle si le visiteur le demande.
 
 Les conversations sont consultables et supprimables depuis l'admin (`/api/admin/logs`).
+
+## Thème par site
+
+Chaque site a sa propre couleur et ambiance :
+
+1. **Admin** : `primaryColor` à la création du site (ex. `#7b9cff` hugodavion, `#9d6df7` Bulle ton site).
+2. **Snippet (optionnel)** : `data-primary-color` pour l'affichage immédiat avant chargement de la config API.
+3. **Auto** : le widget lit aussi les variables CSS du site hôte (`--accent`, `--bg-card`, `--bg`, police du `body`).
+
+Attributs avancés optionnels : `data-panel-bg`, `data-messages-bg`, `data-font-family`, `data-theme="light|dark"`.
