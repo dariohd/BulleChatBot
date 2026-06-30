@@ -404,7 +404,7 @@ export function AdminDashboard() {
             {platform.syncRateLimitPerHour} syncs / h ·{" "}
             {platform.distributedRateLimit
               ? "Upstash actif"
-              : "mémoire par instance (configurer Upstash)"}
+              : "mémoire par instance (défaut)"}
           </p>
           <p className="mt-1 text-xs text-[var(--muted)]">
             Quotas par défaut des nouveaux sites :{" "}

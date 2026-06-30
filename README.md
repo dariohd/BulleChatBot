@@ -16,8 +16,19 @@ Bulle tourne sur le **port 3001** en local pour éviter le conflit avec bulleton
 - **Next.js 15** (App Router) + TypeScript
 - **Mistral** (chat + embeddings RAG) ou **Ollama** en local
 - Widget embarquable (`public/widget/bulle.js`)
-- Persistance Vercel Blob (sites, index, analytics)
+- Persistance **Vercel Blob** (sites, index, analytics, quotas)
 - Tailwind CSS 4
+
+### Services en production
+
+| Service | Requis | Rôle |
+|---|---|---|
+| Vercel | oui | Hébergement, API, cron hebdomadaire |
+| Vercel Blob | oui | Config sites, index RAG, stats, quotas |
+| Mistral | oui | Réponses IA + embeddings |
+| Upstash Redis | non | Rate limit minute partagé entre instances (optionnel) |
+
+Sans Upstash, le rate limit court terme tourne en mémoire par instance. Les quotas journaliers (50 chats, 3 syncs) restent centralisés dans Blob.
 
 ## Démarrage rapide
 
@@ -100,9 +111,11 @@ curl -X POST https://bulle-chatbot.vercel.app/api/sites \
   -d '{"name":"Mon client","domain":"monsite.fr"}'
 ```
 
-Les sites sont persistés dans Vercel Blob. Tableau de bord : `/admin`.
+Les sites sont persistés dans Vercel Blob. Tableau de bord : `/admin` (jauges de consommation, quotas, indexation, édition des sites).
 
 ## Intégration site externe
+
+Snippet direct (dev ou sites sans proxy) :
 
 ```html
 <script
@@ -112,6 +125,8 @@ Les sites sont persistés dans Vercel Blob. Tableau de bord : `/admin`.
   defer
 ></script>
 ```
+
+En production, préférer le **proxy same-origin** pour éviter les blocages adblock : voir [docs/INTEGRATION.md](docs/INTEGRATION.md).
 
 Générer une clé : `npm run generate-site-key`
 
@@ -123,10 +138,14 @@ Générer une clé : `npm run generate-site-key`
 | `BULLE_MODEL` | Nom du modèle |
 | `MISTRAL_API_KEY` | Clé API Mistral (chat + embeddings) |
 | `BULLE_ADMIN_SECRET` | Secret pour créer des sites et accéder à `/admin` |
-| `BLOB_READ_WRITE_TOKEN` | Persistance index, sites et analytics |
+| `BLOB_READ_WRITE_TOKEN` | Persistance index, sites, analytics et quotas |
 | `CRON_SECRET` | Protection du cron de re-indexation |
 | `NEXT_PUBLIC_BULLE_URL` | URL publique du serveur Bulle |
 | `BULLE_CRAWL_MAX_PAGES` | Limite de pages crawlées (défaut : 30) |
+| `BULLE_DEFAULT_MAX_CHATS_PER_DAY` | Quota chats / jour des nouveaux sites (défaut : 50) |
+| `BULLE_DEFAULT_MAX_SYNCS_PER_DAY` | Quota syncs / jour des nouveaux sites (défaut : 3) |
+| `UPSTASH_REDIS_REST_URL` | Rate limit distribué (optionnel) |
+| `UPSTASH_REDIS_REST_TOKEN` | Rate limit distribué (optionnel) |
 
 ## Scripts
 

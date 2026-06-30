@@ -1,15 +1,16 @@
 # Notes techniques — Bulle v0.3
 
-Next.js 15 App Router. Chat streaming via Vercel AI SDK (`ai`) et Mistral direct.
+Next.js 15 App Router. Région Vercel : `cdg1`. Chat streaming via Vercel AI SDK (`ai`) et Mistral direct.
 
 ## Widget
 
 - Source : `public/widget/bulle.js`
 - Build : `npm run build:widget` génère `bulle.v{version}.js` + `manifest.json`
-- Le widget lit `data-api` et `data-site-key`, extrait le contexte page, envoie `sessionId`
+- Attributs : `data-site-key`, `data-api` (URL Bulle) ou `data-proxy="same-origin"` (proxy client)
+- Extrait le contexte page, envoie `sessionId`
 - Sync index : une fois par session (`sessionStorage`)
 - Messages : persistés en `sessionStorage` pendant la navigation
-- Liens cliquables dans les réponses (URLs et markdown)
+- Rendu léger : gras (`**`), listes, liens markdown et URLs
 
 Constantes partagées avec le crawl serveur : `src/lib/page-context.ts`
 
@@ -24,7 +25,7 @@ Constantes partagées avec le crawl serveur : `src/lib/page-context.ts`
 3. Découpage en chunks + embeddings `mistral-embed` si `MISTRAL_API_KEY`
 4. Recherche hybride : cosinus puis mots-clés
 
-Index par couple `siteKey + hostname` dans Vercel Blob (privé).
+Index par couple `siteKey + hostname` dans Vercel Blob (privé). Le statut d'indexation admin utilise `baseUrl` du site pour résoudre le bon fichier.
 
 ## Persistance (Blob privé)
 
@@ -38,11 +39,11 @@ Index par couple `siteKey + hostname` dans Vercel Blob (privé).
 
 En local : dossier `data/` (gitignored).
 
-## Sécurité
+## Sécurité et limites
 
 - `siteKey` + contrôle strict du header `Origin`
-- Rate limiting : Upstash Redis si configuré, sinon mémoire par instance
-- Quotas journaliers par site (`quotas.maxChatsPerDay`, `maxSyncsPerDay`)
+- **Rate limiting minute** : mémoire par instance par défaut (30 chats/min, 5 syncs/h par IP) ; Upstash Redis si `UPSTASH_REDIS_REST_*` est configuré
+- **Quotas journaliers** par site dans Blob (`quotas.maxChatsPerDay`, `maxSyncsPerDay`, défaut 50/3)
 - `BULLE_ADMIN_SECRET` : cookie httpOnly via `/api/admin/login`
 - Clés API LLM côté serveur uniquement
 - Blobs en accès privé (lecture legacy public pour migration)
@@ -58,7 +59,7 @@ En local : dossier `data/` (gitignored).
 | `POST/PATCH/DELETE /api/sites` | Admin |
 | `POST /api/admin/login` | Public (pose le cookie) |
 | `POST /api/admin/logout` | Public |
-| `GET /api/admin/overview` | Admin |
+| `GET /api/admin/overview` | Admin (stats jour, quotas, index, plateforme) |
 | `POST /api/admin/reindex` | Admin |
 | `POST /api/admin/rotate-key` | Admin |
 | `GET/DELETE/PATCH /api/admin/logs` | Admin (conversations RGPD) |
@@ -76,6 +77,8 @@ Si `webhookUrl` est défini sur un site : `chat.started`, `chat.completed`, `ind
 | `BULLE_ADMIN_SECRET` | Dashboard admin |
 | `BLOB_READ_WRITE_TOKEN` | Persistance |
 | `CRON_SECRET` | Cron re-index |
+| `BULLE_DEFAULT_MAX_CHATS_PER_DAY` | Quota défaut nouveaux sites |
+| `BULLE_DEFAULT_MAX_SYNCS_PER_DAY` | Quota défaut nouveaux sites |
 | `UPSTASH_REDIS_REST_URL` | Rate limit distribué (optionnel) |
 | `UPSTASH_REDIS_REST_TOKEN` | Rate limit distribué (optionnel) |
 
@@ -83,11 +86,12 @@ Si `webhookUrl` est défini sur un site : `chat.started`, `chat.completed`, `ind
 
 - Crawl HTML statique uniquement (pas de rendu JavaScript côté client)
 - `siteKey` visible dans le DOM du site client (standard widget embarqué)
+- Sans Upstash, le rate limit minute n'est pas partagé entre instances serverless (acceptable à faible trafic)
 
 ## Tests
 
 ```bash
-npm test      # 13 tests unitaires
+npm test      # 15 tests unitaires
 npm run build # build widget + Next.js
 ```
 
