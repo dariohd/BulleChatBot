@@ -63,6 +63,7 @@ interface EditForm {
   name: string;
   domain: string;
   welcomeMessage: string;
+  instructions: string;
   suggestions: string;
   primaryColor: string;
   webhookUrl: string;
@@ -75,6 +76,7 @@ const defaultEdit: EditForm = {
   name: "",
   domain: "",
   welcomeMessage: "",
+  instructions: "",
   suggestions: "",
   primaryColor: "#2563eb",
   webhookUrl: "",
@@ -245,6 +247,7 @@ export function AdminDashboard() {
         name: data.name ?? site.name,
         domain: data.domain ?? site.domain,
         welcomeMessage: data.welcomeMessage ?? "",
+        instructions: data.instructions ?? "",
         suggestions: Array.isArray(data.suggestions)
           ? data.suggestions.join("\n")
           : "",
@@ -272,6 +275,7 @@ export function AdminDashboard() {
         name: editForm.name,
         domain: editForm.domain,
         welcomeMessage: editForm.welcomeMessage || undefined,
+        instructions: editForm.instructions || undefined,
         primaryColor: editForm.primaryColor || undefined,
         webhookUrl: editForm.webhookUrl || undefined,
         logConversations: editForm.logConversations,
@@ -535,6 +539,15 @@ export function AdminDashboard() {
                 setEditForm((f) => ({ ...f, welcomeMessage: e.target.value }))
               }
               placeholder="Message d'accueil"
+              className="rounded-lg border px-3 py-2 text-sm sm:col-span-2"
+            />
+            <textarea
+              value={editForm.instructions}
+              onChange={(e) =>
+                setEditForm((f) => ({ ...f, instructions: e.target.value }))
+              }
+              placeholder="Instructions Bulle (périmètre, ton, précisions métier…)"
+              rows={5}
               className="rounded-lg border px-3 py-2 text-sm sm:col-span-2"
             />
             <textarea

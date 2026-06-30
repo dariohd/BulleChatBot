@@ -96,7 +96,15 @@ Via `PATCH /api/sites` (admin) :
 - `suggestions` : jusqu'à 3 questions rapides (optionnel ; sinon générées depuis les titres de la page)
 - `primaryColor` : couleur d'accent du widget (boutons, bulles utilisateur, liens). **Une valeur par site** dans l'admin.
 - `tone` : ton des réponses
-- `instructions` : consignes additionnelles
+- `instructions` : consignes additionnelles (ex. préciser qu'une liste de secteurs n'est pas exhaustive). Éditable dans l'admin, section « Modifier le site ».
+
+Preset Bulle ton site : `config/site-presets/bulletonsite.json`. Application en prod :
+
+```bash
+BULLE_URL=https://bulle-chatbot.vercel.app BULLE_ADMIN_SECRET=xxx npm run apply:instructions -- bulletonsite
+```
+
+Après modification du contenu d'un site client, lancer une **ré-indexation** depuis l'admin pour que Bulle lise les nouveaux textes.
 - `quotas.maxChatsPerDay` : quota conversations / jour
 - `quotas.maxSyncsPerDay` : quota synchronisations / jour
 
