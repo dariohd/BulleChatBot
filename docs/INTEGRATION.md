@@ -93,6 +93,7 @@ La réponse contient `siteKey` à utiliser dans le snippet. Les nouveaux sites h
 Via `PATCH /api/sites` (admin) :
 
 - `welcomeMessage` : message d'accueil
+- `suggestions` : jusqu'à 3 questions rapides (chips cliquables)
 - `primaryColor` : couleur de la bulle
 - `tone` : ton des réponses
 - `instructions` : consignes additionnelles

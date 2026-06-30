@@ -51,6 +51,7 @@ export const createSiteSchema = z.object({
   tone: z.string().max(200).optional(),
   language: z.string().max(10).optional(),
   welcomeMessage: z.string().max(500).optional(),
+  suggestions: z.array(z.string().min(1).max(80)).max(3).optional(),
   primaryColor: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/)

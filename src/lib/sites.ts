@@ -282,6 +282,7 @@ export function toPublicSiteConfig(site: SiteConfig): SitePublicConfig {
     id: site.id,
     name: site.name,
     welcomeMessage: site.welcomeMessage,
+    suggestions: site.suggestions?.slice(0, 3),
     primaryColor: site.primaryColor,
     language: site.language,
   };

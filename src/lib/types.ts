@@ -13,6 +13,7 @@ export interface SiteConfig {
   tone?: string;
   language?: string;
   welcomeMessage?: string;
+  suggestions?: string[];
   primaryColor?: string;
   createdAt: string;
   quotas?: SiteQuotas;
@@ -49,6 +50,7 @@ export interface SitePublicConfig {
   id: string;
   name: string;
   welcomeMessage?: string;
+  suggestions?: string[];
   primaryColor?: string;
   language?: string;
 }

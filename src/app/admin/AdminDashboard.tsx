@@ -63,6 +63,7 @@ interface EditForm {
   name: string;
   domain: string;
   welcomeMessage: string;
+  suggestions: string;
   primaryColor: string;
   webhookUrl: string;
   maxChatsPerDay: string;
@@ -74,6 +75,7 @@ const defaultEdit: EditForm = {
   name: "",
   domain: "",
   welcomeMessage: "",
+  suggestions: "",
   primaryColor: "#2563eb",
   webhookUrl: "",
   maxChatsPerDay: "",
@@ -243,6 +245,9 @@ export function AdminDashboard() {
         name: data.name ?? site.name,
         domain: data.domain ?? site.domain,
         welcomeMessage: data.welcomeMessage ?? "",
+        suggestions: Array.isArray(data.suggestions)
+          ? data.suggestions.join("\n")
+          : "",
         primaryColor: data.primaryColor ?? "#2563eb",
         webhookUrl: data.webhookUrl ?? "",
         maxChatsPerDay: data.quotas?.maxChatsPerDay?.toString() ?? "",
@@ -271,6 +276,12 @@ export function AdminDashboard() {
         webhookUrl: editForm.webhookUrl || undefined,
         logConversations: editForm.logConversations,
       };
+      const suggestionLines = editForm.suggestions
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .slice(0, 3);
+      body.suggestions = suggestionLines;
       const quotas: SiteQuotas = {};
       if (editForm.maxChatsPerDay) {
         quotas.maxChatsPerDay = Number(editForm.maxChatsPerDay);
@@ -399,6 +410,14 @@ export function AdminDashboard() {
         </p>
         <div className="flex gap-3">
           <button
+            type="button"
+            onClick={() => void loadOverview()}
+            disabled={loading}
+            className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm"
+          >
+            Actualiser
+          </button>
+          <button
             onClick={() => setShowCreate((v) => !v)}
             className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm"
           >
@@ -516,6 +535,15 @@ export function AdminDashboard() {
                 setEditForm((f) => ({ ...f, welcomeMessage: e.target.value }))
               }
               placeholder="Message d'accueil"
+              className="rounded-lg border px-3 py-2 text-sm sm:col-span-2"
+            />
+            <textarea
+              value={editForm.suggestions}
+              onChange={(e) =>
+                setEditForm((f) => ({ ...f, suggestions: e.target.value }))
+              }
+              placeholder="Suggestions rapides (1 par ligne, max 3)"
+              rows={3}
               className="rounded-lg border px-3 py-2 text-sm sm:col-span-2"
             />
             <input
