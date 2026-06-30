@@ -4,7 +4,7 @@ Next.js 15 App Router. Région Vercel : `cdg1`. Chat streaming via Vercel AI SDK
 
 ## Widget
 
-- Source : `public/widget/bulle.js`
+- Source : `public/widget/bulle.app.js` (build → `bulle.v{version}.js` + loader `bulle.js`)
 - Build : `npm run build:widget` génère `bulle.v{version}.js` + `manifest.json`
 - Attributs : `data-site-key`, `data-api` (URL Bulle) ou `data-proxy="same-origin"` (proxy client)
 - Extrait le contexte page, envoie `sessionId`

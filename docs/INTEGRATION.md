@@ -2,7 +2,7 @@
 
 ## Snippet standard (dev ou test rapide)
 
-Collez avant `</body>`. En production, le build sert un fichier versionné (`bulle.v030.js` via `manifest.json`) ; `bulle.js` reste un alias de compatibilité :
+Collez avant `</body>`. `bulle.js` est un **loader léger** (non mis en cache longue durée) qui charge automatiquement le widget versionné (`bulle.v030.js` via `manifest.json`). La mascotte SVG reçoit aussi `?v=0.3.0` à chaque release.
 
 ```html
 <script
