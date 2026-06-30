@@ -163,10 +163,14 @@
       .slice(0, 8000);
 
     return {
-      url: window.location.href,
-      title: document.title,
-      description: metaDesc ? metaDesc.getAttribute("content") : undefined,
-      headings: headings.slice(0, 15),
+      url: window.location.href.slice(0, 2048),
+      title: document.title.slice(0, 500),
+      description: metaDesc
+        ? (metaDesc.getAttribute("content") || "").slice(0, 1000)
+        : undefined,
+      headings: headings.slice(0, 15).map(function (h) {
+        return h.slice(0, 300);
+      }),
       content: content,
       language: document.documentElement.lang || undefined,
     };
@@ -355,9 +359,16 @@
       .filter(function (m, i, arr) {
         if (i === 0 && m.role === "assistant" && arr.length > 1) return false;
         return true;
-      });
+      })
+      .filter(function (m) {
+        return !(
+          m.role === "assistant" &&
+          m.content.indexOf("Désolé, une erreur est survenue") === 0
+        );
+      })
+      .slice(-12);
 
-    fetch(apiBase + "/api/chat", {
+    fetch(apiBase + "/api/assist", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -393,15 +404,27 @@
 
         function read() {
           return reader.read().then(function (result) {
-            if (result.done) return;
-            assistantText += decoder.decode(result.value, { stream: true });
+            if (result.value) {
+              assistantText += decoder.decode(result.value, {
+                stream: !result.done,
+              });
+            }
+            if (result.done) {
+              assistantText += decoder.decode();
+              state.messages[assistantIndex].content = assistantText;
+              renderMessages();
+              return;
+            }
             state.messages[assistantIndex].content = assistantText;
             renderMessages();
             return read();
           });
         }
 
-        return read();
+        return read().catch(function (streamErr) {
+          console.error("[Bulle] stream:", streamErr);
+          throw streamErr;
+        });
       })
       .catch(function (err) {
         console.error("[Bulle] chat:", err);
@@ -416,7 +439,7 @@
         state.messages.push({
           role: "assistant",
           content:
-            "Désolé, une erreur est survenue. Veuillez réessayer dans un instant.",
+            "Désolé, une erreur est survenue. Vérifiez votre connexion ou désactivez le bloqueur de publicités, puis réessayez.",
         });
         renderMessages();
       });
