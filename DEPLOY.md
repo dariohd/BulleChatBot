@@ -27,6 +27,19 @@ Aucune config métier requise. Un script + une clé site.
 | `NEXT_PUBLIC_BULLE_URL` | `https://bulle-chatbot.vercel.app` |
 | `BLOB_READ_WRITE_TOKEN` | auto via Vercel Blob |
 | `CRON_SECRET` | secret pour le cron de re-indexation |
+| `UPSTASH_REDIS_REST_URL` | Redis Upstash (rate limit fiable, tier gratuit) |
+| `UPSTASH_REDIS_REST_TOKEN` | token Upstash |
+| `BULLE_DEFAULT_MAX_CHATS_PER_DAY` | quota chats / jour par défaut (50) |
+| `BULLE_DEFAULT_MAX_SYNCS_PER_DAY` | quota syncs / jour par défaut (3) |
+
+## Upstash (gratuit, recommandé)
+
+1. Créer une base Redis sur [upstash.com](https://upstash.com) (région proche de `iad1` Vercel)
+2. Copier `UPSTASH_REDIS_REST_URL` et `UPSTASH_REDIS_REST_TOKEN`
+3. Les ajouter sur Vercel → Settings → Environment Variables (Production)
+4. Redéployer Bulle
+
+L’admin affichera **Upstash actif** dans la section Plateforme.
 
 ## Nouveau client
 
@@ -59,7 +72,7 @@ Le widget déclenche automatiquement `/api/index/sync` au premier chargement.
 
 https://bulle-chatbot.vercel.app/admin
 
-Connexion avec `BULLE_ADMIN_SECRET`. Affiche les sites, l'état d'indexation et les statistiques d'usage.
+Connexion avec `BULLE_ADMIN_SECRET`. Affiche les sites, l'état d'indexation, les jauges de consommation du jour (chats / syncs vs quotas) et les statistiques cumulées.
 
 ## Commandes utiles
 

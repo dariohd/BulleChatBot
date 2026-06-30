@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/auth";
 import { indexSite } from "@/lib/index/service";
+import { getSiteByKey } from "@/lib/sites";
 import { adminReindexSchema } from "@/lib/validation";
 
 export async function POST(req: Request) {
@@ -13,7 +14,9 @@ export async function POST(req: Request) {
       return Response.json({ error: "Données invalides" }, { status: 400 });
     }
 
+    const site = await getSiteByKey(parsed.data.siteKey);
     const index = await indexSite(parsed.data.siteKey, {
+      origin: site?.baseUrl,
       force: parsed.data.force ?? true,
     });
 

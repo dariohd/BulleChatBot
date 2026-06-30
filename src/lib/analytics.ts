@@ -107,6 +107,34 @@ export async function getAnalyticsSummary(
   return Promise.all(siteKeys.map((key) => getSiteAnalytics(key)));
 }
 
+function startOfUtcDay(): string {
+  const now = new Date();
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  ).toISOString();
+}
+
+export function countTodayEvents(
+  events: AnalyticsEvent[],
+  type: "chat" | "index_sync"
+): number {
+  const dayStart = startOfUtcDay();
+  return events.filter(
+    (event) => event.timestamp >= dayStart && event.type === type
+  ).length;
+}
+
+export async function getTodayUsage(siteKey: string): Promise<{
+  chatsToday: number;
+  syncsToday: number;
+}> {
+  const analytics = await getSiteAnalytics(siteKey);
+  return {
+    chatsToday: countTodayEvents(analytics.events, "chat"),
+    syncsToday: countTodayEvents(analytics.events, "index_sync"),
+  };
+}
+
 export async function deleteSiteAnalytics(siteKey: string): Promise<void> {
   const ids = await listSiteEventIds(siteKey);
   await Promise.all(

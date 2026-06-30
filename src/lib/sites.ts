@@ -1,10 +1,18 @@
 import { randomBytes } from "crypto";
 import { deleteJson, loadJson, listJsonIds, saveJson } from "@/lib/storage/json-store";
-import type { SiteConfig, SitePublicConfig, SiteAdminView } from "./types";
+import type { SiteConfig, SitePublicConfig, SiteAdminView, SiteQuotas } from "./types";
+import { LIMITS } from "@/lib/env";
 
 const SITES_PREFIX = "bulle-sites";
 const sites = new Map<string, SiteConfig>();
 let loadPromise: Promise<void> | null = null;
+
+function defaultSiteQuotas(): SiteQuotas {
+  return {
+    maxChatsPerDay: LIMITS.defaultMaxChatsPerDay,
+    maxSyncsPerDay: LIMITS.defaultMaxSyncsPerDay,
+  };
+}
 
 function generateSiteKey(): string {
   return `bulle_${randomBytes(24).toString("hex")}`;
@@ -156,7 +164,7 @@ export async function createSite(input: {
       input.welcomeMessage ??
       `Bonjour, je suis Bulle, l'assistant de ${input.name}. Comment puis-je vous aider ?`,
     primaryColor: input.primaryColor ?? "#2563eb",
-    quotas: input.quotas,
+    quotas: input.quotas ?? defaultSiteQuotas(),
     webhookUrl: input.webhookUrl,
     logConversations: input.logConversations,
     conversationRetentionDays: input.conversationRetentionDays,

@@ -1,4 +1,4 @@
-import { getSiteAnalytics } from "@/lib/analytics";
+import { getSiteAnalytics, countTodayEvents } from "@/lib/analytics";
 import type { SiteConfig } from "@/lib/types";
 
 function startOfUtcDay(): string {
@@ -6,6 +6,17 @@ function startOfUtcDay(): string {
   return new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
   ).toISOString();
+}
+
+export async function getSiteUsageToday(siteKey: string): Promise<{
+  chatsToday: number;
+  syncsToday: number;
+}> {
+  const analytics = await getSiteAnalytics(siteKey);
+  return {
+    chatsToday: countTodayEvents(analytics.events, "chat"),
+    syncsToday: countTodayEvents(analytics.events, "index_sync"),
+  };
 }
 
 export async function checkSiteQuotas(

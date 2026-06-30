@@ -20,4 +20,12 @@ export const LIMITS = {
     process.env.BULLE_SYNC_RATE_WINDOW_MS ?? "3600000",
     10
   ),
+  defaultMaxChatsPerDay: parseInt(
+    process.env.BULLE_DEFAULT_MAX_CHATS_PER_DAY ?? "50",
+    10
+  ),
+  defaultMaxSyncsPerDay: parseInt(
+    process.env.BULLE_DEFAULT_MAX_SYNCS_PER_DAY ?? "3",
+    10
+  ),
 } as const;

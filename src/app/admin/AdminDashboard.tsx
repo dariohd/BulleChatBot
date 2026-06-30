@@ -2,25 +2,42 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+interface SiteQuotas {
+  maxChatsPerDay?: number;
+  maxSyncsPerDay?: number;
+}
+
 interface SiteOverview {
   id: string;
   name: string;
   domain: string;
   siteKey: string;
   createdAt: string;
+  quotas: SiteQuotas | null;
   index: {
     indexed: boolean;
     indexedAt?: string;
     pageCount?: number;
     chunkCount?: number;
     stale?: boolean;
+    baseUrl?: string;
   };
   analytics: {
     totalChats: number;
     totalSyncs: number;
+    chatsToday: number;
+    syncsToday: number;
     lastChatAt?: string;
     lastSyncAt?: string;
   };
+}
+
+interface PlatformInfo {
+  distributedRateLimit: boolean;
+  chatRateLimitPerMin: number;
+  syncRateLimitPerHour: number;
+  defaultMaxChatsPerDay: number;
+  defaultMaxSyncsPerDay: number;
 }
 
 interface EditForm {
@@ -30,6 +47,7 @@ interface EditForm {
   primaryColor: string;
   webhookUrl: string;
   maxChatsPerDay: string;
+  maxSyncsPerDay: string;
   logConversations: boolean;
 }
 
@@ -40,8 +58,63 @@ const defaultEdit: EditForm = {
   primaryColor: "#2563eb",
   webhookUrl: "",
   maxChatsPerDay: "",
+  maxSyncsPerDay: "",
   logConversations: false,
 };
+
+function formatWhen(iso?: string): string {
+  if (!iso) return "jamais";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "jamais";
+  return date.toLocaleString("fr-FR", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function UsageGauge({
+  label,
+  used,
+  max,
+}: {
+  label: string;
+  used: number;
+  max?: number;
+}) {
+  if (!max) {
+    return (
+      <div className="space-y-1">
+        <div className="flex justify-between text-xs text-[var(--muted)]">
+          <span>{label}</span>
+          <span>{used} aujourd&apos;hui · illimité</span>
+        </div>
+      </div>
+    );
+  }
+
+  const pct = Math.min(100, Math.round((used / max) * 100));
+  const tone =
+    pct >= 100 ? "bg-red-500" : pct >= 80 ? "bg-amber-500" : "bg-[var(--accent)]";
+
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-xs text-[var(--muted)]">
+        <span>{label}</span>
+        <span>
+          {used} / {max} aujourd&apos;hui
+        </span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+        <div
+          className={`h-2 rounded-full transition-all ${tone}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 
 async function adminFetch(
   url: string,
@@ -68,6 +141,7 @@ export function AdminDashboard() {
   const [newSite, setNewSite] = useState({ name: "", domain: "" });
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<EditForm>(defaultEdit);
+  const [platform, setPlatform] = useState<PlatformInfo | null>(null);
 
   const loadOverview = useCallback(async () => {
     setLoading(true);
@@ -76,6 +150,7 @@ export function AdminDashboard() {
       if (!res.ok) throw new Error("Accès refusé");
       const data = await res.json();
       setSites(data.sites ?? []);
+      setPlatform(data.platform ?? null);
       setLoggedIn(true);
       setError("");
     } catch {
@@ -152,6 +227,7 @@ export function AdminDashboard() {
         primaryColor: data.primaryColor ?? "#2563eb",
         webhookUrl: data.webhookUrl ?? "",
         maxChatsPerDay: data.quotas?.maxChatsPerDay?.toString() ?? "",
+        maxSyncsPerDay: data.quotas?.maxSyncsPerDay?.toString() ?? "",
         logConversations: Boolean(data.logConversations),
       });
     } catch {
@@ -176,8 +252,15 @@ export function AdminDashboard() {
         webhookUrl: editForm.webhookUrl || undefined,
         logConversations: editForm.logConversations,
       };
+      const quotas: SiteQuotas = {};
       if (editForm.maxChatsPerDay) {
-        body.quotas = { maxChatsPerDay: Number(editForm.maxChatsPerDay) };
+        quotas.maxChatsPerDay = Number(editForm.maxChatsPerDay);
+      }
+      if (editForm.maxSyncsPerDay) {
+        quotas.maxSyncsPerDay = Number(editForm.maxSyncsPerDay);
+      }
+      if (Object.keys(quotas).length > 0) {
+        body.quotas = quotas;
       }
       const res = await adminFetch("/api/sites", {
         method: "PATCH",
@@ -313,6 +396,24 @@ export function AdminDashboard() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
+      {platform && (
+        <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
+          <h2 className="font-semibold">Plateforme</h2>
+          <p className="mt-2 text-sm text-[var(--muted)]">
+            Rate limit : {platform.chatRateLimitPerMin} chats / min ·{" "}
+            {platform.syncRateLimitPerHour} syncs / h ·{" "}
+            {platform.distributedRateLimit
+              ? "Upstash actif"
+              : "mémoire par instance (configurer Upstash)"}
+          </p>
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            Quotas par défaut des nouveaux sites :{" "}
+            {platform.defaultMaxChatsPerDay} chats / jour ·{" "}
+            {platform.defaultMaxSyncsPerDay} syncs / jour
+          </p>
+        </section>
+      )}
+
       {showCreate && (
         <form
           onSubmit={handleCreate}
@@ -399,6 +500,14 @@ export function AdminDashboard() {
               className="rounded-lg border px-3 py-2 text-sm"
             />
             <input
+              value={editForm.maxSyncsPerDay}
+              onChange={(e) =>
+                setEditForm((f) => ({ ...f, maxSyncsPerDay: e.target.value }))
+              }
+              placeholder="Quota syncs / jour"
+              className="rounded-lg border px-3 py-2 text-sm"
+            />
+            <input
               value={editForm.webhookUrl}
               onChange={(e) =>
                 setEditForm((f) => ({ ...f, webhookUrl: e.target.value }))
@@ -460,8 +569,24 @@ export function AdminDashboard() {
               </span>
             </div>
             <p className="mt-3 text-sm text-[var(--muted)]">
-              {site.analytics.totalChats} conversations ·{" "}
+              Total : {site.analytics.totalChats} conversations ·{" "}
               {site.analytics.totalSyncs} syncs
+            </p>
+            <div className="mt-4 space-y-3">
+              <UsageGauge
+                label="Conversations"
+                used={site.analytics.chatsToday}
+                max={site.quotas?.maxChatsPerDay}
+              />
+              <UsageGauge
+                label="Synchronisations"
+                used={site.analytics.syncsToday}
+                max={site.quotas?.maxSyncsPerDay}
+              />
+            </div>
+            <p className="mt-3 text-xs text-[var(--muted)]">
+              Dernier chat : {formatWhen(site.analytics.lastChatAt)} · Dernier
+              sync : {formatWhen(site.analytics.lastSyncAt)}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <button

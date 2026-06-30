@@ -17,10 +17,14 @@ function pruneExpired(now: number) {
   }
 }
 
-function hasUpstash(): boolean {
+export function hasDistributedRateLimit(): boolean {
   return Boolean(
     process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
   );
+}
+
+function hasUpstash(): boolean {
+  return hasDistributedRateLimit();
 }
 
 async function getChatLimiter() {
