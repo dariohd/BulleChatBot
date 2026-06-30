@@ -8,7 +8,7 @@
     "build": "npm run build:widget && next build",
     "start": "next start -p 3001",
     "lint": "next lint",
-    "test": "tsx --test tests/**/*.test.ts",
+    "test": "tsx --test tests/*.test.ts",
     "generate-site-key": "node scripts/generate-site-key.mjs"
   },
   "dependencies": {
