@@ -12,6 +12,34 @@ Collez avant `</body>`. En production, le build sert un fichier versionné (`bul
 ></script>
 ```
 
+## Compatible bloqueurs de pub (recommandé)
+
+Les appels API passent par **votre propre domaine** via un proxy Vercel. L’adblock ne bloque pas les requêtes same-origin.
+
+Dans `vercel.json` du site client :
+
+```json
+{
+  "rewrites": [
+    {
+      "source": "/api/bulle/:path*",
+      "destination": "https://bulle-chatbot.vercel.app/api/:path*"
+    }
+  ]
+}
+```
+
+Snippet :
+
+```html
+<script
+  src="https://bulle-chatbot.vercel.app/widget/bulle.js"
+  data-site-key="bulle_VOTRE_CLE"
+  data-proxy="same-origin"
+  defer
+></script>
+```
+
 ## Bulle ton site (bulletonsite)
 
 Projet séparé sur le port 3000. Snippet à intégrer dans le layout principal :

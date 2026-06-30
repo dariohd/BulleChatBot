@@ -7,9 +7,34 @@
   if (!script) return;
 
   var siteKey = script.getAttribute("data-site-key");
-  var apiBase =
-    script.getAttribute("data-api") ||
-    (script.src ? new URL(script.src).origin : window.location.origin);
+  var apiRoot = (function resolveApiRoot() {
+    var proxy = script.getAttribute("data-proxy");
+    var host = window.location.hostname;
+    var isLocal = host === "localhost" || host === "127.0.0.1";
+
+    if (proxy === "same-origin" && !isLocal) {
+      return window.location.origin.replace(/\/$/, "") + "/api/bulle";
+    }
+
+    var explicit = script.getAttribute("data-api");
+    if (explicit) {
+      var base = explicit.replace(/\/$/, "");
+      if (base.endsWith("/api/bulle") || base.endsWith("/api")) return base;
+      return base + "/api";
+    }
+
+    try {
+      return new URL(script.src).origin + "/api";
+    } catch (e) {
+      return window.location.origin.replace(/\/$/, "") + "/api";
+    }
+  })();
+
+  function apiUrl(subpath) {
+    return apiRoot + "/" + String(subpath).replace(/^\//, "");
+  }
+
+  var chatEndpoints = ["assist", "q", "chat"];
 
   if (!siteKey) {
     console.error("[Bulle] data-site-key manquant sur le script.");
@@ -368,19 +393,31 @@
       })
       .slice(-12);
 
-    fetch(apiBase + "/api/assist", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Bulle-Site-Key": siteKey,
-      },
-      body: JSON.stringify({
-        siteKey: siteKey,
-        sessionId: sessionId,
-        pageContext: pageContext,
-        messages: chatMessages,
-      }),
-    })
+    function postChat(endpointIndex) {
+      if (endpointIndex >= chatEndpoints.length) {
+        return Promise.reject(new Error("Aucun endpoint disponible"));
+      }
+      return fetch(apiUrl(chatEndpoints[endpointIndex]), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Bulle-Site-Key": siteKey,
+        },
+        body: JSON.stringify({
+          siteKey: siteKey,
+          sessionId: sessionId,
+          pageContext: pageContext,
+          messages: chatMessages,
+        }),
+      }).then(function (res) {
+        if (res.status === 404 && endpointIndex < chatEndpoints.length - 1) {
+          return postChat(endpointIndex + 1);
+        }
+        return res;
+      });
+    }
+
+    postChat(0)
       .then(function (res) {
         if (!res.ok) {
           return res
@@ -439,7 +476,7 @@
         state.messages.push({
           role: "assistant",
           content:
-            "Désolé, une erreur est survenue. Vérifiez votre connexion ou désactivez le bloqueur de publicités, puis réessayez.",
+            "Désolé, une erreur est survenue. Réessayez dans un instant.",
         });
         renderMessages();
       });
@@ -462,7 +499,7 @@
       // sessionStorage indisponible
     }
 
-    fetch(apiBase + "/api/index/sync", {
+    fetch(apiUrl("index/sync"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -479,7 +516,7 @@
 
   applyTheme(resolveTheme());
 
-  fetch(apiBase + "/api/sites?siteKey=" + encodeURIComponent(siteKey))
+  fetch(apiUrl("sites?siteKey=" + encodeURIComponent(siteKey)))
     .then(function (res) {
       return res.ok ? res.json() : null;
     })
