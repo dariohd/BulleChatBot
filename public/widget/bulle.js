@@ -202,6 +202,38 @@
     };
   }
 
+  function bulleMark(size, variant) {
+    var bubble = "#ffffff";
+    var feature = "var(--bulle-accent)";
+    if (variant === "toggle") {
+      feature = "#ffffff";
+    }
+    if (variant === "footer") {
+      bubble = "var(--bulle-accent)";
+      feature = "#ffffff";
+    }
+    return (
+      '<svg class="bulle-mark" width="' +
+      size +
+      '" height="' +
+      size +
+      '" viewBox="0 0 32 32" fill="none" aria-hidden="true">' +
+      '<path d="M5 3h22a4 4 0 0 1 4 4v12a4 4 0 0 1-4 4h-8l-5 4.2V23H5a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4z" fill="' +
+      bubble +
+      '"/>' +
+      '<circle cx="11.5" cy="11.5" r="2" fill="' +
+      feature +
+      '"/>' +
+      '<circle cx="20.5" cy="11.5" r="2" fill="' +
+      feature +
+      '"/>' +
+      '<path d="M12 16.5c2 1.5 6 1.5 8 0" stroke="' +
+      feature +
+      '" stroke-width="1.6" stroke-linecap="round"/>' +
+      "</svg>"
+    );
+  }
+
   function createStyles(theme) {
     var color = theme.primaryColor || theme;
     var font = theme.fontFamily || config.fontFamily;
@@ -227,13 +259,14 @@
 
     css +=
       ".bulle-root { position: fixed; bottom: 24px; right: 24px; z-index: 2147483646; }" +
-      ".bulle-toggle { width: 60px; height: 60px; border-radius: 50%; border: none; cursor: pointer; background: var(--bulle-accent); color: #fff; box-shadow: 0 8px 32px rgba(0,0,0,.18); display: flex; align-items: center; justify-content: center; transition: transform .2s, box-shadow .2s; }" +
-      ".bulle-toggle:hover { transform: scale(1.05); box-shadow: 0 12px 40px rgba(0,0,0,.22); }" +
-      ".bulle-toggle svg { width: 28px; height: 28px; }" +
-      ".bulle-panel { position: absolute; bottom: 76px; right: 0; width: 380px; max-width: calc(100vw - 32px); height: 520px; max-height: calc(100vh - 120px); background: var(--bulle-panel); border-radius: 16px; box-shadow: 0 16px 48px rgba(0,0,0,.16); display: flex; flex-direction: column; overflow: hidden; opacity: 0; transform: translateY(12px) scale(.96); pointer-events: none; transition: opacity .25s, transform .25s; }" +
+      ".bulle-toggle { width: 60px; height: 60px; border-radius: 50%; border: none; cursor: pointer; background: var(--bulle-accent); color: #fff; box-shadow: 0 8px 28px color-mix(in srgb, var(--bulle-accent) 45%, transparent), 0 4px 12px rgba(0,0,0,.12); display: flex; align-items: center; justify-content: center; transition: transform .2s, box-shadow .2s; }" +
+      ".bulle-toggle:hover { transform: scale(1.05); box-shadow: 0 12px 36px color-mix(in srgb, var(--bulle-accent) 50%, transparent), 0 6px 16px rgba(0,0,0,.15); }" +
+      ".bulle-toggle .bulle-mark { display: block; }" +
+      ".bulle-panel { position: absolute; bottom: 76px; right: 0; width: 380px; max-width: calc(100vw - 32px); height: 520px; max-height: calc(100vh - 120px); background: var(--bulle-panel); border-radius: 18px; box-shadow: 0 16px 48px rgba(0,0,0,.16); display: flex; flex-direction: column; overflow: hidden; opacity: 0; transform: translateY(12px) scale(.96); pointer-events: none; transition: opacity .25s, transform .25s; border: 1px solid var(--bulle-border); }" +
       ".bulle-panel.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }" +
       ".bulle-header { padding: 16px 20px; background: var(--bulle-accent); color: #fff; display: flex; align-items: center; gap: 12px; }" +
-      ".bulle-avatar { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.2); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; }" +
+      ".bulle-avatar { width: 40px; height: 40px; border-radius: 12px; background: rgba(255,255,255,.12); display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: inset 0 0 0 1px rgba(255,255,255,.25); }" +
+      ".bulle-avatar .bulle-mark { display: block; }" +
       ".bulle-header-text h3 { margin: 0; font-size: 15px; font-weight: 600; }" +
       ".bulle-header-text p { margin: 2px 0 0; font-size: 12px; opacity: .85; }" +
       ".bulle-close { margin-left: auto; background: none; border: none; color: #fff; cursor: pointer; opacity: .8; padding: 4px; border-radius: 6px; }" +
@@ -242,7 +275,8 @@
       ".bulle-msg { max-width: 85%; padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5; word-wrap: break-word; animation: bulle-msg-in .25s ease; }" +
       "@keyframes bulle-msg-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }" +
       ".bulle-msg.user { align-self: flex-end; background: var(--bulle-accent); color: #fff; border-bottom-right-radius: 4px; }" +
-      ".bulle-msg.assistant { align-self: flex-start; background: var(--bulle-panel); color: var(--bulle-text); border: 1px solid var(--bulle-border); border-bottom-left-radius: 4px; }" +
+      ".bulle-msg.assistant { align-self: flex-start; background: var(--bulle-panel); color: var(--bulle-text); border: 1px solid var(--bulle-border); border-bottom-left-radius: 4px; position: relative; }" +
+      ".bulle-msg.assistant::before { content: \"\"; position: absolute; left: -5px; bottom: 10px; width: 10px; height: 10px; background: var(--bulle-panel); border-left: 1px solid var(--bulle-border); border-bottom: 1px solid var(--bulle-border); transform: rotate(45deg); border-bottom-left-radius: 2px; }" +
       ".bulle-msg.assistant a { color: var(--bulle-accent); text-decoration: underline; word-break: break-all; }" +
       ".bulle-msg.assistant p { margin: 0 0 8px; }" +
       ".bulle-msg.assistant p:last-child { margin-bottom: 0; }" +
@@ -265,7 +299,8 @@
       ".bulle-input:focus { border-color: var(--bulle-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--bulle-accent) 15%, transparent); }" +
       ".bulle-send { width: 40px; height: 40px; border-radius: 10px; border: none; background: var(--bulle-accent); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }" +
       ".bulle-send:disabled { opacity: .5; cursor: not-allowed; }" +
-      ".bulle-powered { text-align: center; padding: 6px; font-size: 10px; color: var(--bulle-muted); background: var(--bulle-panel); }" +
+      ".bulle-powered { text-align: center; padding: 8px 6px; font-size: 10px; color: var(--bulle-muted); background: var(--bulle-panel); display: flex; align-items: center; justify-content: center; gap: 6px; }" +
+      ".bulle-powered strong { color: var(--bulle-accent); font-weight: 600; }" +
       ".bulle-toggle:focus-visible, .bulle-send:focus-visible, .bulle-close:focus-visible, .bulle-suggestion:focus-visible { outline: 2px solid var(--bulle-accent); outline-offset: 2px; }" +
       "@media (prefers-reduced-motion: reduce) { .bulle-msg, .bulle-panel, .bulle-toggle { animation: none !important; transition: none !important; } .bulle-typing-dots span { animation: none !important; opacity: .6; } }" +
       "@media (max-width: 480px) { .bulle-panel { width: calc(100vw - 16px); right: -8px; height: calc(100vh - 100px); } .bulle-root { bottom: 16px; right: 16px; } }";
@@ -294,7 +329,9 @@
   var panel = el("div", "bulle-panel");
   var header = el("div", "bulle-header");
   header.innerHTML =
-    '<div class="bulle-avatar">B</div>' +
+    '<div class="bulle-avatar">' +
+    bulleMark(28, "header") +
+    '</div>' +
     '<div class="bulle-header-text"><h3 class="bulle-name">Bulle</h3><p class="bulle-subtitle">Assistant du site</p></div>' +
     '<button class="bulle-close" aria-label="Fermer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>';
 
@@ -314,7 +351,9 @@
   inputArea.appendChild(textarea);
   inputArea.appendChild(sendBtn);
 
-  var powered = el("div", "bulle-powered", "Réponses IA · Bulle");
+  var powered = el("div", "bulle-powered");
+  powered.innerHTML =
+    bulleMark(14, "footer") + "<span>Réponses IA · <strong>Bulle</strong></span>";
 
   panel.appendChild(header);
   panel.appendChild(messagesEl);
@@ -325,8 +364,7 @@
 
   var toggle = el("button", "bulle-toggle");
   toggle.setAttribute("aria-label", "Ouvrir le chat Bulle");
-  toggle.innerHTML =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>';
+  toggle.innerHTML = bulleMark(32, "toggle");
   root.appendChild(toggle);
 
   function persistMessages() {
