@@ -112,6 +112,10 @@ async function checkRateLimitDistributed(
 }
 
 export async function checkChatRateLimit(clientId: string) {
+  if (process.env.NODE_ENV === "production" && !hasUpstash()) {
+    console.error("[Bulle] UPSTASH_REDIS_REST_* requis en production");
+    return { allowed: false, retryAfterSec: 60 };
+  }
   const limiter = await getChatLimiter();
   if (limiter) return checkRateLimitDistributed(limiter, clientId);
   return checkRateLimitMemory(
@@ -122,6 +126,10 @@ export async function checkChatRateLimit(clientId: string) {
 }
 
 export async function checkSyncRateLimit(clientId: string) {
+  if (process.env.NODE_ENV === "production" && !hasUpstash()) {
+    console.error("[Bulle] UPSTASH_REDIS_REST_* requis en production");
+    return { allowed: false, retryAfterSec: 60 };
+  }
   const limiter = await getSyncLimiter();
   if (limiter) return checkRateLimitDistributed(limiter, clientId);
   return checkRateLimitMemory(

@@ -75,5 +75,13 @@ export function getAdminSecretForLogin(): string | undefined {
 
 export function validateAdminPassword(password: string): boolean {
   const secret = getAdminSecret();
-  return Boolean(secret && password === secret);
+  if (!secret || !password) return false;
+  try {
+    const a = Buffer.from(password, "utf8");
+    const b = Buffer.from(secret, "utf8");
+    if (a.length !== b.length) return false;
+    return timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
 }

@@ -90,10 +90,14 @@ export function buildSystemPrompt(
   }
 
   if (pageContext.content) {
+    const safeContent = String(pageContext.content)
+      .replace(/<[^>]*>/g, "")
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "")
+      .slice(0, 5000);
     sections.push(
       ``,
       `## Contenu de la page actuelle`,
-      pageContext.content.slice(0, 5000)
+      safeContent
     );
   }
 
